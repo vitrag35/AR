@@ -16,22 +16,16 @@ interface CustomerData {
 
 export default function Home() {
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>('');
+  const [customerData, setCustomerData] = useState<CustomerData | null>(null);
   
-  // Initialize customer data from DB
   const baseCustomer = selectedCustomerId ? DB[selectedCustomerId as keyof typeof DB] : null;
-  const [customerData, setCustomerData] = useState<CustomerData | null>(
-    baseCustomer ? {
-      charges: baseCustomer.charges,
-      payments: [...baseCustomer.payments],
-      creditEntries: [...baseCustomer.creditEntries],
-      applications: [...baseCustomer.applications],
-      deletedEntries: [...baseCustomer.deletedEntries],
-    } : null
-  );
 
   const handleSelectCustomer = useCallback((customerId: string) => {
     setSelectedCustomerId(customerId);
     const customer = DB[customerId as keyof typeof DB];
+    if (!customer) {
+      return;
+    }
     setCustomerData({
       charges: customer.charges,
       payments: [...customer.payments],
