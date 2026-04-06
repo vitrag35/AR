@@ -14,7 +14,7 @@ export default function NewPaymentModal({ customer, isOpen, onClose, onAddPaymen
   const [paymentType, setPaymentType] = useState<PaymentType | ''>('');
   const [amount, setAmount] = useState('');
   const [reference, setReference] = useState('');
-  const [dateReceived, setDateReceived] = useState('');
+  const [dateReceived, setDateReceived] = useState(new Date().toISOString().split('T')[0]);
   const [checkDate, setCheckDate] = useState('');
   const [notes, setNotes] = useState('');
 
@@ -43,7 +43,7 @@ export default function NewPaymentModal({ customer, isOpen, onClose, onAddPaymen
     setPaymentType('');
     setAmount('');
     setReference('');
-    setDateReceived('');
+    setDateReceived(new Date().toISOString().split('T')[0]);
     setCheckDate('');
     setNotes('');
     onClose();
@@ -120,7 +120,7 @@ export default function NewPaymentModal({ customer, isOpen, onClose, onAddPaymen
           <div className="grid grid-cols-2 gap-4 mb-4">
             <div>
               <label className="block text-xs font-semibold text-gray-700 uppercase mb-2">
-                Date Received <span className="text-red-600">*</span>
+                Posting Date <span className="text-red-600">*</span>
               </label>
               <input
                 type="date"
@@ -131,7 +131,7 @@ export default function NewPaymentModal({ customer, isOpen, onClose, onAddPaymen
             </div>
             <div>
               <label className="block text-xs font-semibold text-gray-700 uppercase mb-2">
-                Check Date <span className="text-xs font-normal text-gray-600">(post-dated)</span>
+                Check Date <span className="text-xs font-normal text-gray-600">(optional)</span>
               </label>
               <input
                 type="date"

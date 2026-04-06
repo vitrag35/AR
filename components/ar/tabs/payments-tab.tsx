@@ -140,10 +140,10 @@ export default function PaymentsTab({ customer, onAddPayment, onDeletePayment, o
         <table className="w-full text-sm">
           <thead>
             <tr className="bg-teal-700 text-white">
-              <th className="px-4 py-3 text-left font-semibold text-xs uppercase">Date</th>
+              <th className="px-4 py-3 text-left font-semibold text-xs uppercase">Check Date</th>
+              <th className="px-4 py-3 text-left font-semibold text-xs uppercase">Posting Date</th>
               <th className="px-4 py-3 text-left font-semibold text-xs uppercase">Type</th>
               <th className="px-4 py-3 text-left font-semibold text-xs uppercase">Reference</th>
-              <th className="px-4 py-3 text-left font-semibold text-xs uppercase">Check Date</th>
               <th className="px-4 py-3 text-right font-semibold text-xs uppercase">Amount</th>
               <th className="px-4 py-3 text-right font-semibold text-xs uppercase">Applied</th>
               <th className="px-4 py-3 text-right font-semibold text-xs uppercase">Unapplied Credit</th>
@@ -162,10 +162,10 @@ export default function PaymentsTab({ customer, onAddPayment, onDeletePayment, o
                     selectedPaymentId === payment.id ? 'bg-blue-50' : 'hover:bg-gray-50'
                   }`}
                 >
+                  <td className="px-4 py-3 text-gray-600">{payment.checkDate || '-'}</td>
                   <td className="px-4 py-3 text-gray-800 font-medium">{payment.date}</td>
                   <td className="px-4 py-3 text-gray-600">{PAYMENT_TYPE_LABELS[payment.type]}</td>
                   <td className="px-4 py-3 text-gray-600">{payment.ref}</td>
-                  <td className="px-4 py-3 text-gray-600">{payment.checkDate || '-'}</td>
                   <td className="px-4 py-3 text-right text-gray-800 font-bold">${payment.amount.toFixed(2)}</td>
                   <td className="px-4 py-3 text-right text-gray-600">${payment.applied.toFixed(2)}</td>
                   <td className="px-4 py-3 text-right font-bold text-gray-800">${unapplied.toFixed(2)}</td>
