@@ -1,6 +1,8 @@
 export type PaymentType = 'CHECK' | 'CASH' | 'CREDIT_CARD' | 'WIRE' | 'ACH' | 'MONEY_ORDER' | 'ZELLE' | 'OTHER';
 export type PaymentStatus = 'UNAPPLIED' | 'PARTIAL' | 'APPLIED';
 export type ChargeStatus = 'UNPAID' | 'PARTIAL' | 'PAID';
+export type FinanceChargeFrequency = 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'QUARTERLY';
+export type FinanceChargeStatus = 'UNPAID' | 'PARTIAL' | 'PAID';
 
 export interface Charge {
   id: string;
@@ -10,6 +12,47 @@ export interface Charge {
   due: string;
   amount: number;
   paid: number;
+}
+
+export interface FinanceChargeConfig {
+  id: string;
+  annualInterestRate: number; // percentage, e.g., 18
+  daysUntilInterestApplies: number; // e.g., 30
+  calculationFrequency: FinanceChargeFrequency;
+  minimumChargeAmount: number; // minimum interest to create entry, e.g., 1.00
+  lastRunDate: string | null; // ISO date
+  isEnabled: boolean;
+}
+
+export interface FinanceCharge {
+  id: string;
+  customerId: string;
+  chargeId: string; // reference to original invoice
+  calculationDate: string; // when the charge was calculated
+  periodStartDate: string; // first day of interest calculation period
+  periodEndDate: string; // last day of interest calculation period
+  principalAmount: number; // amount the interest was calculated on
+  interestRate: number; // annual rate used for calculation
+  interestAmount: number; // calculated interest
+  status: FinanceChargeStatus;
+  paid: number; // amount of finance charge paid so far
+  notes?: string;
+  createdDate: string;
+}
+
+export interface FinanceChargeLogEntry {
+  customerId: string;
+  chargeCount: number;
+  totalAmount: number;
+}
+
+export interface FinanceChargeLog {
+  id: string;
+  runDate: string;
+  totalChargesCreated: number;
+  totalInterestAmount: number;
+  chargesProcessed: FinanceChargeLogEntry[];
+  errorLog?: string[];
 }
 
 export interface Payment {
@@ -106,6 +149,7 @@ export interface Customer {
   applications: Application[];
   deletedEntries: DeletedEntry[];
   deposits: Deposit[];
+  financeCharges: FinanceCharge[];
 }
 
 export const USERS = ['John Smith', 'Sarah Johnson', 'Mike Davis', 'Lisa Anderson'];
@@ -119,6 +163,16 @@ export const PAYMENT_TYPE_LABELS: Record<PaymentType, string> = {
   MONEY_ORDER: 'Money Order',
   ZELLE: 'Zelle',
   OTHER: 'Other',
+};
+
+export const DEFAULT_FINANCE_CHARGE_CONFIG: FinanceChargeConfig = {
+  id: 'fcc-default',
+  annualInterestRate: 18,
+  daysUntilInterestApplies: 30,
+  calculationFrequency: 'MONTHLY',
+  minimumChargeAmount: 1.0,
+  lastRunDate: '2024-03-01',
+  isEnabled: true,
 };
 
 export const DB: Record<string, Customer> = {
@@ -143,6 +197,10 @@ export const DB: Record<string, Customer> = {
     ],
     deletedEntries: [],
     deposits: [],
+    financeCharges: [
+      { id: 'fc1', customerId: 'c1', chargeId: 'i1', calculationDate: '2024-03-01', periodStartDate: '2024-02-15', periodEndDate: '2024-03-01', principalAmount: 1500, interestRate: 18, interestAmount: 22.50, status: 'UNPAID', paid: 0, createdDate: '2024-03-01' },
+      { id: 'fc2', customerId: 'c1', chargeId: 'i2', calculationDate: '2024-03-01', periodStartDate: '2024-03-10', periodEndDate: '2024-03-01', principalAmount: 2200, interestRate: 18, interestAmount: 17.60, status: 'UNPAID', paid: 0, createdDate: '2024-03-01' },
+    ],
   },
   c2: {
     id: 'c2',
@@ -163,6 +221,9 @@ export const DB: Record<string, Customer> = {
     ],
     deletedEntries: [],
     deposits: [],
+    financeCharges: [
+      { id: 'fc3', customerId: 'c2', chargeId: 'i4', calculationDate: '2024-03-01', periodStartDate: '2024-03-01', periodEndDate: '2024-03-01', principalAmount: 5200, interestRate: 18, interestAmount: 78.00, status: 'UNPAID', paid: 0, createdDate: '2024-03-01' },
+    ],
   },
   c3: {
     id: 'c3',
@@ -185,5 +246,8 @@ export const DB: Record<string, Customer> = {
     ],
     deletedEntries: [],
     deposits: [],
+    financeCharges: [
+      { id: 'fc4', customerId: 'c3', chargeId: 'i6', calculationDate: '2024-03-01', periodStartDate: '2024-02-20', periodEndDate: '2024-03-01', principalAmount: 2500, interestRate: 18, interestAmount: 37.50, status: 'UNPAID', paid: 0, createdDate: '2024-03-01' },
+    ],
   },
 };

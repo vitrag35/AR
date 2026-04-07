@@ -3,9 +3,10 @@ import { Search } from 'lucide-react';
 interface HeaderProps {
   onOpenDeposits?: () => void;
   onOpenSearch?: () => void;
+  onOpenFinanceCharges?: () => void;
 }
 
-export default function Header({ onOpenDeposits, onOpenSearch }: HeaderProps) {
+export default function Header({ onOpenDeposits, onOpenSearch, onOpenFinanceCharges }: HeaderProps) {
   return (
     <div className="bg-teal-700 text-white px-6 py-3 flex items-center justify-between">
       <h1 className="text-xl font-semibold">Account Receivables - AR Payment Module</h1>
@@ -17,6 +18,14 @@ export default function Header({ onOpenDeposits, onOpenSearch }: HeaderProps) {
           >
             <Search className="w-4 h-4" />
             Search
+          </button>
+        )}
+        {onOpenFinanceCharges && (
+          <button
+            onClick={onOpenFinanceCharges}
+            className="px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded font-semibold transition"
+          >
+            Finance Charges
           </button>
         )}
         {onOpenDeposits && (

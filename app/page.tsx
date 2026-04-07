@@ -1,12 +1,13 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { DB, Payment, PaymentApplication, CreditEntry, DeletedEntry, Charge, Deposit } from '@/lib/ar-data';
+import { DB, Payment, PaymentApplication, CreditEntry, DeletedEntry, Charge, Deposit, FinanceCharge } from '@/lib/ar-data';
 import Header from '@/components/ar/header';
 import CustomerBar from '@/components/ar/customer-bar';
 import ArPanel from '@/components/ar/ar-panel';
 import UniversalDepositsModal from '@/components/modals/universal-deposits-modal';
 import UniversalSearchModal from '@/components/modals/universal-search-modal';
+import FinanceChargesView from '@/components/finance-charges-view';
 
 interface CustomerData {
   charges: typeof DB.acme_corp.charges;
@@ -14,10 +15,12 @@ interface CustomerData {
   creditEntries: CreditEntry[];
   applications: PaymentApplication[];
   deletedEntries: DeletedEntry[];
+  financeCharges: FinanceCharge[];
 }
 
 export default function Home() {
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>('');
+  const [isFinanceChargesViewOpen, setIsFinanceChargesViewOpen] = useState(false);
   
   // Initialize customer data from DB
   const baseCustomer = selectedCustomerId ? DB[selectedCustomerId as keyof typeof DB] : null;
@@ -28,6 +31,7 @@ export default function Home() {
       creditEntries: [...baseCustomer.creditEntries],
       applications: [...baseCustomer.applications],
       deletedEntries: [...baseCustomer.deletedEntries],
+      financeCharges: [...(baseCustomer.financeCharges || [])],
     } : null
   );
 
@@ -40,6 +44,7 @@ export default function Home() {
       creditEntries: [...customer.creditEntries],
       applications: [...customer.applications],
       deletedEntries: [...customer.deletedEntries],
+      financeCharges: [...(customer.financeCharges || [])],
     });
   }, []);
 
@@ -377,6 +382,29 @@ export default function Home() {
     });
   }, []);
 
+  const handleApplyPaymentToFinanceCharge = useCallback((financeChargeId: string, amount: number) => {
+    setCustomerData((prev) => {
+      if (!prev) return prev;
+
+      const newFinanceCharges = prev.financeCharges.map((fc) => {
+        if (fc.id === financeChargeId) {
+          const newPaid = Math.min(fc.paid + amount, fc.interestAmount);
+          return {
+            ...fc,
+            paid: newPaid,
+            status: newPaid === 0 ? 'UNPAID' : newPaid < fc.interestAmount ? 'PARTIAL' : 'PAID',
+          };
+        }
+        return fc;
+      });
+
+      return {
+        ...prev,
+        financeCharges: newFinanceCharges,
+      };
+    });
+  }, []);
+
   const selectedCustomer = baseCustomer && customerData ? {
     ...baseCustomer,
     charges: customerData.charges,
@@ -384,13 +412,19 @@ export default function Home() {
     creditEntries: customerData.creditEntries,
     applications: customerData.applications,
     deletedEntries: customerData.deletedEntries,
+    financeCharges: customerData.financeCharges,
   } : null;
+
+  if (isFinanceChargesViewOpen) {
+    return <FinanceChargesView onClose={() => setIsFinanceChargesViewOpen(false)} />;
+  }
 
   return (
     <main className="min-h-screen bg-gray-100">
       <Header 
         onOpenDeposits={() => setIsDepositsModalOpen(true)} 
         onOpenSearch={() => setIsSearchModalOpen(true)}
+        onOpenFinanceCharges={() => setIsFinanceChargesViewOpen(true)}
       />
       <UniversalSearchModal
         isOpen={isSearchModalOpen}
@@ -420,6 +454,7 @@ export default function Home() {
           onDeleteCreditEntry={handleDeleteCreditEntry}
           onApplyPayment={handleApplyPayment}
           onUnapplyPayment={handleUnapplyPayment}
+          onApplyPaymentToFinanceCharge={handleApplyPaymentToFinanceCharge}
         />
       ) : (
         <div className="max-w-4xl mx-auto mt-24 px-6">
