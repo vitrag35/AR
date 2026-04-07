@@ -6,7 +6,7 @@ import ApplyPaymentModal from '../modals/apply-payment-modal';
 import TransactionHistoryModal from '../modals/transaction-history-modal';
 import NewAdjustmentModal from '../modals/new-adjustment-modal';
 import ReturnedCheckModal from '../modals/returned-check-modal';
-import ReceiptModal from '../../modals/receipt-modal';
+import ReceiptModal from '../modals/receipt-modal';
 
 interface ChargesTabProps {
   customer: Customer;

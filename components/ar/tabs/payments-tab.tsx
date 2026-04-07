@@ -5,7 +5,7 @@ import { Customer, PAYMENT_TYPE_LABELS, PaymentStatus, Payment, PaymentApplicati
 import NewPaymentModal from '../modals/new-payment-modal';
 import DirectApplyModal from '../modals/direct-apply-modal';
 import PaymentTransactionHistoryModal from '../modals/payment-transaction-history-modal';
-import ReceiptModal from '../../modals/receipt-modal';
+import ReceiptModal from '../modals/receipt-modal';
 
 interface PaymentsTabProps {
   customer: Customer;
