@@ -211,7 +211,7 @@ export default function Home() {
       });
     });
 
-    // Create new deposit
+    // Create new deposit (automatically posted)
     const newDeposit: Deposit = {
       id: `dep_${Date.now()}`,
       depositId,
@@ -225,8 +225,9 @@ export default function Home() {
       adjustmentTotal,
       returnCheckTotal: 0,
       amount: totalAmount,
-      status: 'PENDING',
+      status: 'POSTED',
       createdDate: new Date().toISOString().split('T')[0],
+      isDeleted: false,
     };
 
     // Mark items as deposited
@@ -249,94 +250,15 @@ export default function Home() {
     setGlobalDeposits([...globalDeposits, newDeposit]);
   }, [globalDeposits]);
 
-  const handleFinalizeDeposit = useCallback((depositId: string) => {
+  const handleDeleteDeposit = useCallback((depositId: string) => {
     setGlobalDeposits((prev) =>
       prev.map((d) =>
-        d.id === depositId ? { ...d, status: 'POSTED' } : d
-      )
-    );
-  }, []);
-
-  const handleRemoveFromDeposit = useCallback((depositId: string, itemId: string, itemType: 'PAYMENT' | 'ADJUSTMENT' | 'RETURNED_CHECK') => {
-    const deposit = globalDeposits.find((d) => d.id === depositId);
-    if (!deposit || deposit.status === 'POSTED') return;
-
-    let updatedPaymentIds = deposit.paymentIds;
-    let updatedAdjustmentIds = deposit.adjustmentIds;
-
-    if (itemType === 'PAYMENT' || itemType === 'RETURNED_CHECK') {
-      updatedPaymentIds = deposit.paymentIds.filter((id) => id !== itemId);
-    } else if (itemType === 'ADJUSTMENT') {
-      updatedAdjustmentIds = deposit.adjustmentIds.filter((id) => id !== itemId);
-    }
-
-    // Recalculate totals
-    let newPaymentTotal = 0;
-    let newAdjustmentTotal = 0;
-
-    Object.values(DB).forEach((customer) => {
-      customer.payments.forEach((p) => {
-        if (updatedPaymentIds.includes(p.id)) {
-          newPaymentTotal += p.amount;
-        }
-      });
-
-      customer.creditEntries.forEach((c) => {
-        if (updatedAdjustmentIds.includes(c.id)) {
-          newAdjustmentTotal += c.amount;
-        }
-      });
-    });
-
-    const newAmount = newPaymentTotal + newAdjustmentTotal;
-
-    setGlobalDeposits((prev) =>
-      prev.map((d) =>
-        d.id === depositId
-          ? {
-              ...d,
-              paymentIds: updatedPaymentIds,
-              adjustmentIds: updatedAdjustmentIds,
-              paymentTotal: newPaymentTotal,
-              adjustmentTotal: newAdjustmentTotal,
-              amount: newAmount,
-            }
+        d.id === depositId 
+          ? { ...d, isDeleted: true, deletedDate: new Date().toISOString().split('T')[0] }
           : d
       )
     );
-
-    // Update item deposit status
-    Object.entries(DB).forEach(([_customerId, customer]) => {
-      const payment = customer.payments.find((p) => p.id === itemId);
-      if (payment) {
-        payment.isDeposited = false;
-        payment.depositId = undefined;
-      }
-
-      const entry = customer.creditEntries.find((c) => c.id === itemId);
-      if (entry) {
-        entry.isDeposited = false;
-        entry.depositId = undefined;
-      }
-    });
-
-    // Update current customer data if applicable
-    setCustomerData((prev) => {
-      if (!prev) return prev;
-
-      const payment = prev.payments.find((p) => p.id === paymentId);
-      if (!payment) return prev;
-
-      return {
-        ...prev,
-        payments: prev.payments.map((p) =>
-          p.id === paymentId
-            ? { ...p, isDeposited: false, depositId: undefined }
-            : p
-        ),
-      };
-    });
-  }, [globalDeposits]);
+  }, []);
 
   const handleUnapplyPayment = useCallback((applicationId: string) => {
     setCustomerData((prev) => {
@@ -410,8 +332,7 @@ export default function Home() {
         onClose={() => setIsDepositsModalOpen(false)}
         deposits={globalDeposits}
         onCreateDeposit={handleCreateDeposit}
-        onFinalizeDeposit={handleFinalizeDeposit}
-        onRemoveFromDeposit={handleRemoveFromDeposit}
+        onDeleteDeposit={handleDeleteDeposit}
       />
       <CustomerBar 
         selectedCustomerId={selectedCustomerId}

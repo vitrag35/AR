@@ -39,7 +39,7 @@ export interface Application {
 
 export type PaymentApplication = Application;
 
-export type DepositStatus = 'PENDING' | 'POSTED';
+export type DepositStatus = 'POSTED';
 
 export interface Deposit {
   id: string;
@@ -56,6 +56,8 @@ export interface Deposit {
   amount: number;
   status: DepositStatus;
   createdDate: string;
+  isDeleted?: boolean;
+  deletedDate?: string;
 }
 
 export type CreditType = 'PAYMENT' | 'ADJUSTMENT' | 'REFUND';

@@ -10,8 +10,7 @@ interface UniversalDepositsModalProps {
   onClose: () => void;
   deposits: Deposit[];
   onCreateDeposit: (paymentIds: string[], adjustmentIds: string[], depositDate: string, reference: string) => void;
-  onFinalizeDeposit: (depositId: string) => void;
-  onRemoveFromDeposit: (depositId: string, itemId: string, itemType: 'PAYMENT' | 'ADJUSTMENT' | 'RETURNED_CHECK') => void;
+  onDeleteDeposit: (depositId: string) => void;
 }
 
 export default function UniversalDepositsModal({
@@ -19,8 +18,7 @@ export default function UniversalDepositsModal({
   onClose,
   deposits,
   onCreateDeposit,
-  onFinalizeDeposit,
-  onRemoveFromDeposit,
+  onDeleteDeposit,
 }: UniversalDepositsModalProps) {
   const [view, setView] = useState<'create' | 'manage'>('create');
 
@@ -132,8 +130,7 @@ export default function UniversalDepositsModal({
           {view === 'manage' && (
             <ManageDepositsView
               deposits={deposits}
-              onFinalizeDeposit={onFinalizeDeposit}
-              onRemoveFromDeposit={onRemoveFromDeposit}
+              onDeleteDeposit={onDeleteDeposit}
             />
           )}
         </div>
