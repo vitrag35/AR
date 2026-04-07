@@ -11,6 +11,7 @@ import ReceiptModal from '../modals/receipt-modal';
 interface ChargesTabProps {
   customer: Customer;
   onAddCharge: (charge: Charge) => void;
+  onDeleteCharge: (chargeId: string) => void;
   onAddCreditEntry: (entry: CreditEntry) => void;
   onUnapplyPayment: (applicationId: string) => void;
   onApplyPayment?: (applications: PaymentApplication[]) => void;
@@ -30,7 +31,7 @@ type ChargeItem = {
   depositDate: string | null;
 };
 
-export default function ChargesTab({ customer, onAddCharge, onAddCreditEntry, onUnapplyPayment, onApplyPayment }: ChargesTabProps) {
+export default function ChargesTab({ customer, onAddCharge, onDeleteCharge, onAddCreditEntry, onUnapplyPayment, onApplyPayment }: ChargesTabProps) {
   const [selectedChargeId, setSelectedChargeId] = useState<string | null>(null);
   const [showApplyModal, setShowApplyModal] = useState(false);
   const [showTxnHistoryModal, setShowTxnHistoryModal] = useState(false);
@@ -40,6 +41,7 @@ export default function ChargesTab({ customer, onAddCharge, onAddCreditEntry, on
   const [selectedReceiptItem, setSelectedReceiptItem] = useState<Payment | CreditEntry | null>(null);
   const [selectedReceiptType, setSelectedReceiptType] = useState<'PAYMENT' | 'RETURNED_CHECK' | 'ADJUSTMENT' | null>(null);
   const [showUnpaidOnly, setShowUnpaidOnly] = useState(false);
+  const [deletingChargeId, setDeletingChargeId] = useState<string | null>(null);
 
   // Helper to find deposit info for a charge
   const getDepositInfo = (chargeId: string, isAdjustment: boolean) => {
@@ -253,6 +255,44 @@ export default function ChargesTab({ customer, onAddCharge, onAddCreditEntry, on
             >
               Unapply All
             </button>
+            {/* Delete button - only for Returned Checks and Adjustments that are not paid */}
+            {selectedCharge && (selectedCharge.type === 'R' || selectedCharge.type === 'A') && (
+              <>
+                {deletingChargeId === selectedChargeId ? (
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => {
+                        onDeleteCharge(selectedChargeId);
+                        setSelectedChargeId(null);
+                        setDeletingChargeId(null);
+                      }}
+                      className="px-3 py-1 bg-red-600 text-white rounded text-xs font-semibold hover:bg-red-700"
+                    >
+                      Confirm
+                    </button>
+                    <button
+                      onClick={() => setDeletingChargeId(null)}
+                      className="px-3 py-1 bg-gray-300 text-gray-700 rounded text-xs font-semibold hover:bg-gray-400"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => {
+                      if (selectedCharge && selectedCharge.paid === 0 && !selectedCharge.isDeposited) {
+                        setDeletingChargeId(selectedChargeId);
+                      }
+                    }}
+                    disabled={selectedCharge.paid > 0 || selectedCharge.isDeposited}
+                    title={selectedCharge.isDeposited ? 'Cannot delete a deposited record' : selectedCharge.paid > 0 ? 'Cannot delete a record with payments applied' : ''}
+                    className="px-3 py-1 bg-red-50 text-red-700 rounded text-xs font-semibold hover:bg-red-100 border border-red-200 disabled:bg-gray-100 disabled:text-gray-400 disabled:border-gray-200 disabled:cursor-not-allowed"
+                  >
+                    Delete
+                  </button>
+                )}
+              </>
+            )}
             <button
               onClick={() => setSelectedChargeId(null)}
               className="px-3 py-1 bg-gray-100 text-gray-700 rounded text-xs font-semibold hover:bg-gray-200"

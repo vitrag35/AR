@@ -79,14 +79,20 @@ export interface CreditEntry {
   isDeposited?: boolean;
 }
 
+export type DeletedEntryType = 'PAYMENT' | 'ADJUSTMENT' | 'REFUND' | 'RETURNED_CHECK';
+
 export interface DeletedEntry {
   id: string;
   entryId: string;
-  entryType: CreditType;
+  entryType: DeletedEntryType;
   customerName: string;
+  customerId: string;
   amount: number;
+  date: string;
   deletedDate: string;
   reason: string;
+  reference?: string;
+  documentNum?: string;
 }
 
 export interface Customer {

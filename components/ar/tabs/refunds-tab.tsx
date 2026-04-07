@@ -8,7 +8,7 @@ import PaymentTransactionHistoryModal from '../modals/payment-transaction-histor
 interface RefundsTabProps {
   customer: Customer;
   onDeleteCreditEntry: (entryId: string) => void;
-  onAddCreditEntry: (entry: any) => void;
+  onAddCreditEntry?: (entry: any) => void;
   onApplyPayment?: (applications: PaymentApplication[]) => void;
   onUnapplyPayment: (applicationId: string) => void;
 }
