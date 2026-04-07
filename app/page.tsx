@@ -1,10 +1,11 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { DB, Payment, PaymentApplication, CreditEntry, DeletedEntry, Charge } from '@/lib/ar-data';
+import { DB, Payment, PaymentApplication, CreditEntry, DeletedEntry, Charge, Deposit } from '@/lib/ar-data';
 import Header from '@/components/ar/header';
 import CustomerBar from '@/components/ar/customer-bar';
 import ArPanel from '@/components/ar/ar-panel';
+import UniversalDepositsModal from '@/components/modals/universal-deposits-modal';
 
 interface CustomerData {
   charges: typeof DB.acme_corp.charges;
@@ -78,9 +79,9 @@ export default function Home() {
       const payment = prev.payments.find((p) => p.id === paymentId);
       if (!payment) return prev;
 
-      // Check if payment has been applied
+      // Check if payment has been applied or is deposited
       const hasApplications = prev.applications.some((app) => app.paymentId === paymentId);
-      if (hasApplications) {
+      if (hasApplications || payment.isDeposited) {
         return prev;
       }
 
@@ -138,18 +139,32 @@ export default function Home() {
         return { ...payment, applied };
       });
 
-      // Update credit entry applied amounts
+      // Update credit entry applied amounts and track adjustments
+      const adjustmentsByCharge = new Map<string, number>();
       const newCreditEntries = prev.creditEntries.map((entry) => {
         const entryApplications = newApplications.filter((app) => app.paymentId === entry.id);
         const applied = entryApplications.reduce((sum, app) => sum + app.amount, 0);
+        
+        // Track adjustments by charge
+        entryApplications.forEach((app) => {
+          const currentAdjustment = adjustmentsByCharge.get(app.chargeId) || 0;
+          adjustmentsByCharge.set(app.chargeId, currentAdjustment + app.amount);
+        });
+        
         return { ...entry, applied };
       });
 
-      // Update charge paid amounts
+      // Update charge paid amounts and apply adjustments to amount
       const newCharges = prev.charges.map((charge) => {
         const chargeApplications = newApplications.filter((app) => app.chargeId === charge.id);
         const paid = chargeApplications.reduce((sum, app) => sum + app.amount, 0);
-        return { ...charge, paid };
+        const adjustment = adjustmentsByCharge.get(charge.id) || 0;
+        
+        return { 
+          ...charge, 
+          paid,
+          amount: charge.amount + adjustment
+        };
       });
 
       return {
@@ -160,6 +175,89 @@ export default function Home() {
         applications: newApplications,
       };
     });
+  }, []);
+
+  const [globalDeposits, setGlobalDeposits] = useState<Deposit[]>([]);
+  const [isDepositsModalOpen, setIsDepositsModalOpen] = useState(false);
+
+  const handleCreateDeposit = useCallback((paymentIds: string[], adjustmentIds: string[], depositDate: string, reference: string) => {
+    // Generate unique deposit ID
+    const depositNum = globalDeposits.length + 1;
+    const depositId = `DEP-${String(depositNum).padStart(4, '0')}`;
+
+    // Calculate totals by type
+    let paymentTotal = 0;
+    let adjustmentTotal = 0;
+    let totalAmount = 0;
+
+    Object.values(DB).forEach((customer) => {
+      customer.payments.forEach((p) => {
+        if (paymentIds.includes(p.id)) {
+          const amount = p.transactionType === 'RETURNED_CHECK' ? -p.amount : p.amount;
+          if (p.transactionType === 'RETURNED_CHECK') {
+            totalAmount -= p.amount;
+          } else {
+            paymentTotal += p.amount;
+            totalAmount += p.amount;
+          }
+        }
+      });
+
+      customer.creditEntries.forEach((c) => {
+        if (adjustmentIds.includes(c.id)) {
+          adjustmentTotal += c.amount;
+          totalAmount += c.amount;
+        }
+      });
+    });
+
+    // Create new deposit (automatically posted)
+    const newDeposit: Deposit = {
+      id: `dep_${Date.now()}`,
+      depositId,
+      depositDate,
+      batch: 'N/A',
+      reference,
+      paymentIds,
+      adjustmentIds,
+      returnCheckIds: [],
+      paymentTotal,
+      adjustmentTotal,
+      returnCheckTotal: 0,
+      amount: totalAmount,
+      status: 'POSTED',
+      createdDate: new Date().toISOString().split('T')[0],
+      isDeleted: false,
+    };
+
+    // Mark items as deposited
+    Object.entries(DB).forEach(([_customerId, customer]) => {
+      customer.payments.forEach((p) => {
+        if (paymentIds.includes(p.id)) {
+          p.isDeposited = true;
+          p.depositId = newDeposit.id;
+        }
+      });
+
+      customer.creditEntries.forEach((c) => {
+        if (adjustmentIds.includes(c.id)) {
+          c.isDeposited = true;
+          c.depositId = newDeposit.id;
+        }
+      });
+    });
+
+    setGlobalDeposits([...globalDeposits, newDeposit]);
+  }, [globalDeposits]);
+
+  const handleDeleteDeposit = useCallback((depositId: string) => {
+    setGlobalDeposits((prev) =>
+      prev.map((d) =>
+        d.id === depositId 
+          ? { ...d, isDeleted: true, deletedDate: new Date().toISOString().split('T')[0] }
+          : d
+      )
+    );
   }, []);
 
   const handleUnapplyPayment = useCallback((applicationId: string) => {
@@ -179,18 +277,32 @@ export default function Home() {
         return { ...payment, applied };
       });
 
-      // Update credit entry applied amounts
+      // Update credit entry applied amounts and track adjustments
+      const adjustmentsByCharge = new Map<string, number>();
       const newCreditEntries = prev.creditEntries.map((entry) => {
         const entryApplications = newApplications.filter((app) => app.paymentId === entry.id);
         const applied = entryApplications.reduce((sum, app) => sum + app.amount, 0);
+        
+        // Track adjustments by charge
+        entryApplications.forEach((app) => {
+          const currentAdjustment = adjustmentsByCharge.get(app.chargeId) || 0;
+          adjustmentsByCharge.set(app.chargeId, currentAdjustment + app.amount);
+        });
+        
         return { ...entry, applied };
       });
 
-      // Update charge paid amounts
+      // Update charge paid amounts and apply adjustments to amount
       const newCharges = prev.charges.map((charge) => {
         const chargeApplications = newApplications.filter((app) => app.chargeId === charge.id);
         const paid = chargeApplications.reduce((sum, app) => sum + app.amount, 0);
-        return { ...charge, paid };
+        const adjustment = adjustmentsByCharge.get(charge.id) || 0;
+        
+        return { 
+          ...charge, 
+          paid,
+          amount: charge.amount + adjustment
+        };
       });
 
       return {
@@ -214,7 +326,14 @@ export default function Home() {
 
   return (
     <main className="min-h-screen bg-gray-100">
-      <Header />
+      <Header onOpenDeposits={() => setIsDepositsModalOpen(true)} />
+      <UniversalDepositsModal
+        isOpen={isDepositsModalOpen}
+        onClose={() => setIsDepositsModalOpen(false)}
+        deposits={globalDeposits}
+        onCreateDeposit={handleCreateDeposit}
+        onDeleteDeposit={handleDeleteDeposit}
+      />
       <CustomerBar 
         selectedCustomerId={selectedCustomerId}
         selectedCustomer={selectedCustomer}
