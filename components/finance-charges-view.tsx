@@ -5,19 +5,22 @@ import { Customer, FinanceCharge, FinanceChargeStatus, DB, DEFAULT_FINANCE_CHARG
 import { calculateFinanceChargesForAllCustomers } from '@/lib/finance-charges';
 import FinanceChargesSettingsModal from './modals/finance-charges-settings-modal';
 import FinanceChargesModal from './ar/modals/finance-charges-modal';
-import { Settings, Play } from 'lucide-react';
+import { Settings, Play, X } from 'lucide-react';
 
 interface FinanceChargesViewProps {
+  isOpen: boolean;
   onClose: () => void;
 }
 
-export default function FinanceChargesView({ onClose }: FinanceChargesViewProps) {
+export default function FinanceChargesView({ isOpen, onClose }: FinanceChargesViewProps) {
   const [config, setConfig] = useState(DEFAULT_FINANCE_CHARGE_CONFIG);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [selectedFinanceChargeId, setSelectedFinanceChargeId] = useState<string | null>(null);
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<FinanceChargeStatus | 'ALL'>('ALL');
   const [financeChargeLogs, setFinanceChargeLogs] = useState<any[]>([]);
+
+  if (!isOpen) return null;
 
   // Gather all finance charges from all customers
   const allFinanceCharges: (FinanceCharge & { customerName: string; customerId: string })[] = [];
@@ -80,21 +83,25 @@ export default function FinanceChargesView({ onClose }: FinanceChargesViewProps)
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 p-6">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg w-[95vw] h-[95vh] flex flex-col shadow-xl">
+        {/* Modal Header */}
+        <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Finance Charges</h1>
-            <p className="text-gray-600 mt-1">Company-wide interest and finance charge tracking</p>
+            <h1 className="text-2xl font-bold text-gray-900">Finance Charges</h1>
+            <p className="text-gray-600 mt-1 text-sm">Company-wide interest and finance charge tracking</p>
           </div>
           <button
             onClick={onClose}
-            className="px-4 py-2 bg-gray-200 text-gray-800 rounded font-semibold hover:bg-gray-300 transition-colors"
+            className="p-1 hover:bg-gray-100 rounded transition-colors"
           >
-            Back to AR
+            <X className="w-6 h-6 text-gray-500" />
           </button>
         </div>
+
+        {/* Modal Content - Scrollable */}
+        <div className="overflow-y-auto flex-1 p-6">
+          <div className="max-w-7xl mx-auto">
 
         {/* Stats Cards */}
         <div className="grid grid-cols-4 gap-4 mb-6">
@@ -242,56 +249,58 @@ export default function FinanceChargesView({ onClose }: FinanceChargesViewProps)
           </div>
         </div>
 
-        {/* Finance Charge Logs */}
-        {financeChargeLogs.length > 0 && (
-          <div className="mt-6 bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Calculation History</h2>
-            <div className="space-y-3">
-              {financeChargeLogs.map((log, idx) => (
-                <div
-                  key={idx}
-                  className="flex items-center justify-between p-4 bg-gray-50 border border-gray-200 rounded"
-                >
-                  <div>
-                    <p className="text-sm font-semibold text-gray-900">
-                      Run Date: {log.runDate}
-                    </p>
-                    <p className="text-xs text-gray-600 mt-1">
-                      {log.totalChargesCreated} charges created • Total: ${log.totalInterestAmount.toFixed(2)}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm font-bold text-gray-900">
-                      ${log.totalInterestAmount.toFixed(2)}
-                    </p>
-                  </div>
+            {/* Finance Charge Logs */}
+            {financeChargeLogs.length > 0 && (
+              <div className="mt-6 bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+                <h2 className="text-lg font-semibold text-gray-900 mb-4">Calculation History</h2>
+                <div className="space-y-3">
+                  {financeChargeLogs.map((log, idx) => (
+                    <div
+                      key={idx}
+                      className="flex items-center justify-between p-4 bg-gray-50 border border-gray-200 rounded"
+                    >
+                      <div>
+                        <p className="text-sm font-semibold text-gray-900">
+                          Run Date: {log.runDate}
+                        </p>
+                        <p className="text-xs text-gray-600 mt-1">
+                          {log.totalChargesCreated} charges created • Total: ${log.totalInterestAmount.toFixed(2)}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-bold text-gray-900">
+                          ${log.totalInterestAmount.toFixed(2)}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+              </div>
+            )}
           </div>
+        </div>
+
+        {/* Settings Modal */}
+        <FinanceChargesSettingsModal
+          isOpen={showSettingsModal}
+          onClose={() => setShowSettingsModal(false)}
+          config={config}
+          onUpdateConfig={setConfig}
+        />
+
+        {/* Finance Charge Details Modal */}
+        {selectedCharge && selectedCustomer && (
+          <FinanceChargesModal
+            isOpen={!!selectedFinanceChargeId}
+            onClose={() => {
+              setSelectedFinanceChargeId(null);
+              setSelectedCustomerId(null);
+            }}
+            financeCharge={selectedCharge}
+            customer={selectedCustomer}
+          />
         )}
       </div>
-
-      {/* Settings Modal */}
-      <FinanceChargesSettingsModal
-        isOpen={showSettingsModal}
-        onClose={() => setShowSettingsModal(false)}
-        config={config}
-        onUpdateConfig={setConfig}
-      />
-
-      {/* Finance Charge Details Modal */}
-      {selectedCharge && selectedCustomer && (
-        <FinanceChargesModal
-          isOpen={!!selectedFinanceChargeId}
-          onClose={() => {
-            setSelectedFinanceChargeId(null);
-            setSelectedCustomerId(null);
-          }}
-          financeCharge={selectedCharge}
-          customer={selectedCustomer}
-        />
-      )}
     </div>
   );
 }

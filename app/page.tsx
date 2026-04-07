@@ -20,7 +20,7 @@ interface CustomerData {
 
 export default function Home() {
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>('');
-  const [isFinanceChargesViewOpen, setIsFinanceChargesViewOpen] = useState(false);
+  const [isFinanceChargesModalOpen, setIsFinanceChargesModalOpen] = useState(false);
   
   // Initialize customer data from DB
   const baseCustomer = selectedCustomerId ? DB[selectedCustomerId as keyof typeof DB] : null;
@@ -415,34 +415,19 @@ export default function Home() {
     financeCharges: customerData.financeCharges,
   } : null;
 
-  if (isFinanceChargesViewOpen) {
-    return <FinanceChargesView onClose={() => setIsFinanceChargesViewOpen(false)} />;
-  }
-
   return (
     <main className="min-h-screen bg-gray-100">
       <Header 
         onOpenDeposits={() => setIsDepositsModalOpen(true)} 
         onOpenSearch={() => setIsSearchModalOpen(true)}
-        onOpenFinanceCharges={() => setIsFinanceChargesViewOpen(true)}
       />
-      <UniversalSearchModal
-        isOpen={isSearchModalOpen}
-        onClose={() => setIsSearchModalOpen(false)}
-        onSelectCustomer={handleSelectCustomer}
-      />
-      <UniversalDepositsModal
-        isOpen={isDepositsModalOpen}
-        onClose={() => setIsDepositsModalOpen(false)}
-        deposits={globalDeposits}
-        onCreateDeposit={handleCreateDeposit}
-        onDeleteDeposit={handleDeleteDeposit}
-      />
-      <CustomerBar 
+      <CustomerBar
         selectedCustomerId={selectedCustomerId}
         selectedCustomer={selectedCustomer}
         onSelectCustomer={handleSelectCustomer}
+        onOpenFinanceCharges={() => setIsFinanceChargesModalOpen(true)}
       />
+
       {selectedCustomer && customerData ? (
         <ArPanel 
           customer={selectedCustomer}
@@ -457,13 +442,25 @@ export default function Home() {
           onApplyPaymentToFinanceCharge={handleApplyPaymentToFinanceCharge}
         />
       ) : (
-        <div className="max-w-4xl mx-auto mt-24 px-6">
-          <div className="flex flex-col items-center justify-center py-20 text-gray-300 gap-4">
-            <div className="text-5xl">👤</div>
-            <p className="text-lg">Select a customer above to view their Account Receivable</p>
-          </div>
+        <div className="p-6 text-center text-gray-500">
+          <p>Select a customer to view AR details</p>
         </div>
       )}
+
+      <UniversalSearchModal
+        isOpen={isSearchModalOpen}
+        onClose={() => setIsSearchModalOpen(false)}
+        onSelectCustomer={handleSelectCustomer}
+      />
+      <UniversalDepositsModal
+        isOpen={isDepositsModalOpen}
+        onClose={() => setIsDepositsModalOpen(false)}
+      />
+
+      <FinanceChargesView
+        isOpen={isFinanceChargesModalOpen}
+        onClose={() => setIsFinanceChargesModalOpen(false)}
+      />
     </main>
   );
 }
