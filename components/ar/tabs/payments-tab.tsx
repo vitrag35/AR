@@ -22,8 +22,14 @@ export default function PaymentsTab({ customer, onAddPayment, onDeletePayment, o
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [deletingPaymentId, setDeletingPaymentId] = useState<string | null>(null);
   const [showReceiptModal, setShowReceiptModal] = useState(false);
+  const [showUnappliedOnly, setShowUnappliedOnly] = useState(false);
 
   const selectedPayment = customer.payments.find((p) => p.id === selectedPaymentId);
+  
+  // Filter payments based on unapplied toggle
+  const displayedPayments = showUnappliedOnly
+    ? customer.payments.filter((p) => p.amount - p.applied > 0)
+    : customer.payments;
 
   const getPaymentStatus = (payment: typeof customer.payments[0]): PaymentStatus => {
     if (payment.applied === 0) return 'UNAPPLIED';
@@ -66,6 +72,19 @@ export default function PaymentsTab({ customer, onAddPayment, onDeletePayment, o
           >
             + New Payment
           </button>
+        </div>
+
+        {/* Filter toggle */}
+        <div className="flex items-center gap-2 mb-4">
+          <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={showUnappliedOnly}
+              onChange={(e) => setShowUnappliedOnly(e.target.checked)}
+              className="w-4 h-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500"
+            />
+            Show unapplied only
+          </label>
         </div>
 
         {selectedPaymentId && (
@@ -149,6 +168,7 @@ export default function PaymentsTab({ customer, onAddPayment, onDeletePayment, o
         <table className="w-full text-sm">
           <thead>
             <tr className="bg-teal-700 text-white">
+              <th className="px-4 py-3 text-left font-semibold text-xs uppercase">Record ID</th>
               <th className="px-4 py-3 text-left font-semibold text-xs uppercase">Check Date</th>
               <th className="px-4 py-3 text-left font-semibold text-xs uppercase">Posting Date</th>
               <th className="px-4 py-3 text-left font-semibold text-xs uppercase">Type</th>
@@ -156,12 +176,13 @@ export default function PaymentsTab({ customer, onAddPayment, onDeletePayment, o
               <th className="px-4 py-3 text-right font-semibold text-xs uppercase">Amount</th>
               <th className="px-4 py-3 text-right font-semibold text-xs uppercase">Applied</th>
               <th className="px-4 py-3 text-right font-semibold text-xs uppercase">Unapplied Credit</th>
-              <th className="px-4 py-3 text-left font-semibold text-xs uppercase">Deposit ID</th>
+              <th className="px-4 py-3 text-center font-semibold text-xs uppercase">Deposited</th>
+              <th className="px-4 py-3 text-left font-semibold text-xs uppercase">Deposit Date</th>
               <th className="px-4 py-3 text-left font-semibold text-xs uppercase">Status</th>
             </tr>
           </thead>
           <tbody>
-            {customer.payments.map((payment) => {
+            {displayedPayments.map((payment) => {
               const status = getPaymentStatus(payment);
               const unapplied = payment.amount - payment.applied;
               return (
@@ -172,6 +193,7 @@ export default function PaymentsTab({ customer, onAddPayment, onDeletePayment, o
                     selectedPaymentId === payment.id ? 'bg-blue-50' : 'hover:bg-gray-50'
                   }`}
                 >
+                  <td className="px-4 py-3 text-gray-500 text-xs font-mono">{payment.id}</td>
                   <td className="px-4 py-3 text-gray-600">{payment.checkDate || '-'}</td>
                   <td className="px-4 py-3 text-gray-800 font-medium">{payment.date}</td>
                   <td className="px-4 py-3 text-gray-600">{PAYMENT_TYPE_LABELS[payment.type]}</td>
@@ -179,14 +201,17 @@ export default function PaymentsTab({ customer, onAddPayment, onDeletePayment, o
                   <td className="px-4 py-3 text-right text-gray-800 font-bold">${payment.amount.toFixed(2)}</td>
                   <td className="px-4 py-3 text-right text-gray-600">${payment.applied.toFixed(2)}</td>
                   <td className="px-4 py-3 text-right font-bold text-gray-800">${unapplied.toFixed(2)}</td>
+                  <td className="px-4 py-3 text-center">
+                    {payment.isDeposited ? (
+                      <span className="inline-block px-2 py-1 bg-green-100 text-green-700 rounded text-xs font-bold">Yes</span>
+                    ) : (
+                      <span className="inline-block px-2 py-1 bg-gray-100 text-gray-500 rounded text-xs font-bold">No</span>
+                    )}
+                  </td>
                   <td className="px-4 py-3 text-gray-600">
                     {payment.depositId ? (
-                      <span className="inline-block px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs font-semibold">
-                        {customer.deposits.find((d) => d.id === payment.depositId)?.depositId || 'Unknown'}
-                      </span>
-                    ) : (
-                      <span className="text-gray-400 text-xs">-</span>
-                    )}
+                      customer.deposits.find((d) => d.id === payment.depositId)?.depositDate || '-'
+                    ) : '-'}
                   </td>
                   <td className="px-4 py-3">
                     <span

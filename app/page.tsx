@@ -6,6 +6,7 @@ import Header from '@/components/ar/header';
 import CustomerBar from '@/components/ar/customer-bar';
 import ArPanel from '@/components/ar/ar-panel';
 import UniversalDepositsModal from '@/components/modals/universal-deposits-modal';
+import UniversalSearchModal from '@/components/modals/universal-search-modal';
 
 interface CustomerData {
   charges: typeof DB.acme_corp.charges;
@@ -85,13 +86,31 @@ export default function Home() {
         return prev;
       }
 
-      // Simply remove the unapplied payment
+      // Determine entry type
+      const entryType = payment.transactionType === 'RETURNED_CHECK' ? 'RETURNED_CHECK' : 'PAYMENT';
+
+      // Move to deleted entries
+      const deletedEntry: DeletedEntry = {
+        id: `del_${Date.now()}`,
+        entryId: payment.id,
+        entryType,
+        customerName: baseCustomer?.name || '',
+        customerId: baseCustomer?.id || '',
+        amount: payment.amount,
+        date: payment.date,
+        deletedDate: new Date().toISOString().split('T')[0],
+        reason: 'Deleted by user',
+        reference: payment.ref,
+        documentNum: payment.ref,
+      };
+
       return {
         ...prev,
         payments: prev.payments.filter((p) => p.id !== paymentId),
+        deletedEntries: [...prev.deletedEntries, deletedEntry],
       };
     });
-  }, []);
+  }, [baseCustomer?.name, baseCustomer?.id]);
 
   const handleDeleteCreditEntry = useCallback((entryId: string) => {
     setCustomerData((prev) => {
@@ -112,9 +131,13 @@ export default function Home() {
         entryId: entry.id,
         entryType: entry.type,
         customerName: baseCustomer?.name || '',
+        customerId: baseCustomer?.id || '',
         amount: entry.amount,
+        date: entry.date,
         deletedDate: new Date().toISOString().split('T')[0],
         reason: entry.reason || 'No reason provided',
+        reference: entry.ref,
+        documentNum: entry.ref,
       };
 
       return {
@@ -123,7 +146,45 @@ export default function Home() {
         deletedEntries: [...prev.deletedEntries, deletedEntry],
       };
     });
-  }, [baseCustomer?.name]);
+  }, [baseCustomer?.name, baseCustomer?.id]);
+
+  const handleDeleteCharge = useCallback((chargeId: string) => {
+    setCustomerData((prev) => {
+      if (!prev) return prev;
+      
+      const charge = prev.charges.find((c) => c.id === chargeId);
+      if (!charge) return prev;
+
+      // Check if charge has been paid
+      if (charge.paid > 0) {
+        return prev;
+      }
+
+      // Determine type - is it a returned check or adjustment?
+      const isReturnedCheck = charge.num.startsWith('RC-');
+      
+      // Move to deleted entries
+      const deletedEntry: DeletedEntry = {
+        id: `del_${Date.now()}`,
+        entryId: charge.id,
+        entryType: isReturnedCheck ? 'RETURNED_CHECK' : 'ADJUSTMENT',
+        customerName: baseCustomer?.name || '',
+        customerId: baseCustomer?.id || '',
+        amount: charge.amount,
+        date: charge.date,
+        deletedDate: new Date().toISOString().split('T')[0],
+        reason: 'Deleted by user',
+        reference: charge.ref,
+        documentNum: charge.num,
+      };
+
+      return {
+        ...prev,
+        charges: prev.charges.filter((c) => c.id !== chargeId),
+        deletedEntries: [...prev.deletedEntries, deletedEntry],
+      };
+    });
+  }, [baseCustomer?.name, baseCustomer?.id]);
 
   const handleApplyPayment = useCallback((applications: PaymentApplication[]) => {
     setCustomerData((prev) => {
@@ -179,6 +240,7 @@ export default function Home() {
 
   const [globalDeposits, setGlobalDeposits] = useState<Deposit[]>([]);
   const [isDepositsModalOpen, setIsDepositsModalOpen] = useState(false);
+  const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
 
   const handleCreateDeposit = useCallback((paymentIds: string[], adjustmentIds: string[], depositDate: string, reference: string) => {
     // Generate unique deposit ID
@@ -326,7 +388,15 @@ export default function Home() {
 
   return (
     <main className="min-h-screen bg-gray-100">
-      <Header onOpenDeposits={() => setIsDepositsModalOpen(true)} />
+      <Header 
+        onOpenDeposits={() => setIsDepositsModalOpen(true)} 
+        onOpenSearch={() => setIsSearchModalOpen(true)}
+      />
+      <UniversalSearchModal
+        isOpen={isSearchModalOpen}
+        onClose={() => setIsSearchModalOpen(false)}
+        onSelectCustomer={handleSelectCustomer}
+      />
       <UniversalDepositsModal
         isOpen={isDepositsModalOpen}
         onClose={() => setIsDepositsModalOpen(false)}
@@ -343,6 +413,7 @@ export default function Home() {
         <ArPanel 
           customer={selectedCustomer}
           onAddCharge={handleAddCharge}
+          onDeleteCharge={handleDeleteCharge}
           onAddPayment={handleAddPayment}
           onDeletePayment={handleDeletePayment}
           onAddCreditEntry={handleAddCreditEntry}
