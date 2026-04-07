@@ -22,11 +22,12 @@ type ChargeItem = {
   num: string;
   ref: string;
   date: string;
-  due: string;
   amount: number;
   paid: number;
   type: 'I' | 'A' | 'R'; // Invoice, Adjustment, Returned Check
   originalType: 'CHARGE' | 'ADJUSTMENT' | 'RETURNED_CHECK';
+  isDeposited: boolean;
+  depositDate: string | null;
 };
 
 export default function ChargesTab({ customer, onAddCharge, onAddCreditEntry, onUnapplyPayment, onApplyPayment }: ChargesTabProps) {
@@ -40,6 +41,22 @@ export default function ChargesTab({ customer, onAddCharge, onAddCreditEntry, on
   const [selectedReceiptType, setSelectedReceiptType] = useState<'PAYMENT' | 'RETURNED_CHECK' | 'ADJUSTMENT' | null>(null);
   const [showUnpaidOnly, setShowUnpaidOnly] = useState(false);
 
+  // Helper to find deposit info for a charge
+  const getDepositInfo = (chargeId: string, isAdjustment: boolean) => {
+    // For adjustments, check adjustmentIds in deposits
+    if (isAdjustment) {
+      const deposit = customer.deposits.find((d) => !d.isDeleted && d.adjustmentIds?.includes(chargeId));
+      return deposit ? { isDeposited: true, depositDate: deposit.depositDate } : { isDeposited: false, depositDate: null };
+    }
+    // For returned checks, check returnCheckIds
+    const rcDeposit = customer.deposits.find((d) => !d.isDeleted && d.returnCheckIds?.includes(chargeId));
+    if (rcDeposit) {
+      return { isDeposited: true, depositDate: rcDeposit.depositDate };
+    }
+    // For invoices, they don't get deposited directly
+    return { isDeposited: false, depositDate: null };
+  };
+
   // Combine charges, positive adjustments, and returned checks into a unified list
   const getCombinedCharges = (): ChargeItem[] => {
     const items: ChargeItem[] = [];
@@ -48,16 +65,18 @@ export default function ChargesTab({ customer, onAddCharge, onAddCreditEntry, on
     customer.charges.forEach((charge) => {
       // Check if this is a returned check (starts with RC-)
       const isReturnedCheck = charge.num.startsWith('RC-');
+      const depositInfo = getDepositInfo(charge.id, false);
       items.push({
         id: charge.id,
         num: charge.num,
         ref: charge.ref,
         date: charge.date,
-        due: charge.due,
         amount: charge.amount,
         paid: charge.paid,
         type: isReturnedCheck ? 'R' : 'I',
         originalType: isReturnedCheck ? 'RETURNED_CHECK' : 'CHARGE',
+        isDeposited: depositInfo.isDeposited,
+        depositDate: depositInfo.depositDate,
       });
     });
 
@@ -69,17 +88,19 @@ export default function ChargesTab({ customer, onAddCharge, onAddCreditEntry, on
         const appliedAmount = customer.applications
           .filter((app) => app.chargeId === adj.id)
           .reduce((sum, app) => sum + app.amount, 0);
+        const depositInfo = getDepositInfo(adj.id, true);
 
         items.push({
           id: adj.id,
           num: adj.ref || `ADJ-${adj.id}`,
           ref: adj.reason || '',
           date: adj.date,
-          due: adj.date, // Adjustments don't have due dates, use same date
           amount: adj.amount,
           paid: appliedAmount,
           type: 'A',
           originalType: 'ADJUSTMENT',
+          isDeposited: depositInfo.isDeposited,
+          depositDate: depositInfo.depositDate,
         });
       });
 
@@ -247,14 +268,16 @@ export default function ChargesTab({ customer, onAddCharge, onAddCreditEntry, on
         <table className="w-full text-sm">
           <thead>
             <tr className="bg-teal-700 text-white">
+              <th className="px-4 py-3 text-left font-semibold text-xs uppercase">Record ID</th>
               <th className="px-4 py-3 text-left font-semibold text-xs uppercase">Type</th>
               <th className="px-4 py-3 text-left font-semibold text-xs uppercase">Document #</th>
               <th className="px-4 py-3 text-left font-semibold text-xs uppercase">Reference</th>
               <th className="px-4 py-3 text-left font-semibold text-xs uppercase">Date</th>
-              <th className="px-4 py-3 text-left font-semibold text-xs uppercase">Due Date</th>
               <th className="px-4 py-3 text-right font-semibold text-xs uppercase">Amount</th>
               <th className="px-4 py-3 text-right font-semibold text-xs uppercase">Amount Paid</th>
               <th className="px-4 py-3 text-right font-semibold text-xs uppercase">Balance Due</th>
+              <th className="px-4 py-3 text-center font-semibold text-xs uppercase">Deposited</th>
+              <th className="px-4 py-3 text-left font-semibold text-xs uppercase">Deposit Date</th>
               <th className="px-4 py-3 text-left font-semibold text-xs uppercase">Status</th>
             </tr>
           </thead>
@@ -270,6 +293,7 @@ export default function ChargesTab({ customer, onAddCharge, onAddCreditEntry, on
                     selectedChargeId === charge.id ? 'bg-blue-100 border-l-4 border-l-teal-700' : ''
                   }`}
                 >
+                  <td className="px-4 py-3 text-gray-500 text-xs font-mono">{charge.id}</td>
                   <td className="px-4 py-3">
                     <span
                       className={`inline-block px-2 py-1 rounded text-xs font-bold ${getTypeBadgeColor(charge.type)}`}
@@ -281,10 +305,17 @@ export default function ChargesTab({ customer, onAddCharge, onAddCreditEntry, on
                   <td className="px-4 py-3 text-gray-800 font-medium">{charge.num}</td>
                   <td className="px-4 py-3 text-gray-600">{charge.ref}</td>
                   <td className="px-4 py-3 text-gray-600">{charge.date}</td>
-                  <td className="px-4 py-3 text-gray-600">{charge.type === 'A' ? '-' : charge.due}</td>
                   <td className="px-4 py-3 text-right text-gray-800 font-medium">${charge.amount.toFixed(2)}</td>
                   <td className="px-4 py-3 text-right text-gray-600">${charge.paid.toFixed(2)}</td>
                   <td className="px-4 py-3 text-right font-bold text-gray-800">${balanceDue.toFixed(2)}</td>
+                  <td className="px-4 py-3 text-center">
+                    {charge.isDeposited ? (
+                      <span className="inline-block px-2 py-1 bg-green-100 text-green-700 rounded text-xs font-bold">Yes</span>
+                    ) : (
+                      <span className="inline-block px-2 py-1 bg-gray-100 text-gray-500 rounded text-xs font-bold">No</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-gray-600">{charge.depositDate || '-'}</td>
                   <td className="px-4 py-3">
                     <span
                       className={`inline-block px-3 py-1 rounded-full text-xs font-bold border ${getStatusBadgeColor(

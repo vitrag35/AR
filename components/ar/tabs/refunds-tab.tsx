@@ -69,8 +69,8 @@ export default function RefundsTab({
     <>
       <div className="mb-6">
         <div>
-          <h3 className="text-lg font-medium text-gray-700">Refunds / Credits</h3>
-          <p className="text-xs text-gray-500 mt-1">Click a row to select a refund or credit.</p>
+          <h3 className="text-lg font-medium text-gray-700">Credits</h3>
+          <p className="text-xs text-gray-500 mt-1">Click a row to select a credit.</p>
         </div>
 
         {/* Filter toggle */}
@@ -158,7 +158,7 @@ export default function RefundsTab({
       {displayedRefunds.length === 0 ? (
         <div className="bg-gray-50 border border-gray-200 rounded p-6 text-center">
           <p className="text-gray-500 text-sm">
-            {showUnappliedOnly ? 'No unapplied refunds or credit memos.' : 'No refunds or credit memos yet.'}
+            {showUnappliedOnly ? 'No unapplied credits.' : 'No credits yet.'}
           </p>
         </div>
       ) : (
@@ -166,12 +166,15 @@ export default function RefundsTab({
           <table className="w-full border-collapse">
             <thead>
               <tr className="bg-teal-700 text-white">
+                <th className="px-4 py-3 text-left font-semibold text-xs uppercase">Record ID</th>
+                <th className="px-4 py-3 text-left font-semibold text-xs uppercase">Type</th>
+                <th className="px-4 py-3 text-left font-semibold text-xs uppercase">Document #</th>
                 <th className="px-4 py-3 text-left font-semibold text-xs uppercase">Date</th>
-                <th className="px-4 py-3 text-left font-semibold text-xs uppercase">Reason</th>
-                <th className="px-4 py-3 text-left font-semibold text-xs uppercase">Reference</th>
                 <th className="px-4 py-3 text-right font-semibold text-xs uppercase">Amount</th>
                 <th className="px-4 py-3 text-right font-semibold text-xs uppercase">Applied</th>
                 <th className="px-4 py-3 text-right font-semibold text-xs uppercase">Available</th>
+                <th className="px-4 py-3 text-center font-semibold text-xs uppercase">Deposited</th>
+                <th className="px-4 py-3 text-left font-semibold text-xs uppercase">Deposit Date</th>
                 <th className="px-4 py-3 text-left font-semibold text-xs uppercase">Status</th>
               </tr>
             </thead>
@@ -183,6 +186,9 @@ export default function RefundsTab({
                     : refund.applied < refund.amount
                     ? 'PARTIAL'
                     : 'APPLIED';
+                
+                // Find deposit info
+                const deposit = customer.deposits.find((d) => !d.isDeleted && d.adjustmentIds?.includes(refund.id));
 
                 return (
                   <tr
@@ -192,14 +198,27 @@ export default function RefundsTab({
                       selectedRefundId === refund.id ? 'bg-blue-50' : 'hover:bg-gray-50'
                     }`}
                   >
+                    <td className="px-4 py-3 text-gray-500 text-xs font-mono">{refund.id}</td>
+                    <td className="px-4 py-3">
+                      <span className="inline-block px-2 py-1 bg-orange-100 text-orange-700 rounded text-xs font-bold">
+                        C
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-gray-600 text-sm font-mono">{refund.ref || '-'}</td>
                     <td className="px-4 py-3 text-gray-800 text-sm">{refund.date}</td>
-                    <td className="px-4 py-3 text-gray-600 text-sm">{refund.reason || '-'}</td>
-                    <td className="px-4 py-3 text-gray-600 text-sm font-mono">{refund.ref}</td>
                     <td className="px-4 py-3 text-right font-bold text-gray-800">${refund.amount.toFixed(2)}</td>
                     <td className="px-4 py-3 text-right font-bold text-teal-700">${refund.applied.toFixed(2)}</td>
                     <td className="px-4 py-3 text-right font-bold text-gray-800">
                       ${(refund.amount - refund.applied).toFixed(2)}
                     </td>
+                    <td className="px-4 py-3 text-center">
+                      {refund.isDeposited || deposit ? (
+                        <span className="inline-block px-2 py-1 bg-green-100 text-green-700 rounded text-xs font-bold">Yes</span>
+                      ) : (
+                        <span className="inline-block px-2 py-1 bg-gray-100 text-gray-500 rounded text-xs font-bold">No</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-gray-600">{deposit?.depositDate || '-'}</td>
                     <td className="px-4 py-3">
                       <span
                         className={`inline-block px-3 py-1 text-xs font-semibold rounded border ${getRefundStatusColor(

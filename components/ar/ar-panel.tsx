@@ -23,7 +23,7 @@ export default function ArPanel({ customer, onAddPayment, onDeletePayment, onAdd
   const tabs = [
     { id: 'charges', label: 'Charges' },
     { id: 'payments', label: 'Payments' },
-    { id: 'refunds', label: 'Refunds' },
+    { id: 'refunds', label: 'Credits' },
   ];
 
   return (
