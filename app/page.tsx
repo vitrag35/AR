@@ -180,17 +180,33 @@ export default function Home() {
   const [globalDeposits, setGlobalDeposits] = useState<Deposit[]>([]);
   const [isDepositsModalOpen, setIsDepositsModalOpen] = useState(false);
 
-  const handleCreateDeposit = useCallback((paymentIds: string[]) => {
+  const handleCreateDeposit = useCallback((paymentIds: string[], adjustmentIds: string[], depositDate: string, reference: string) => {
     // Generate unique deposit ID
     const depositNum = globalDeposits.length + 1;
     const depositId = `DEP-${String(depositNum).padStart(4, '0')}`;
 
-    // Calculate total amount
+    // Calculate totals by type
+    let paymentTotal = 0;
+    let adjustmentTotal = 0;
     let totalAmount = 0;
+
     Object.values(DB).forEach((customer) => {
       customer.payments.forEach((p) => {
         if (paymentIds.includes(p.id)) {
-          totalAmount += p.amount;
+          const amount = p.transactionType === 'RETURNED_CHECK' ? -p.amount : p.amount;
+          if (p.transactionType === 'RETURNED_CHECK') {
+            totalAmount -= p.amount;
+          } else {
+            paymentTotal += p.amount;
+            totalAmount += p.amount;
+          }
+        }
+      });
+
+      customer.creditEntries.forEach((c) => {
+        if (adjustmentIds.includes(c.id)) {
+          adjustmentTotal += c.amount;
+          totalAmount += c.amount;
         }
       });
     });
@@ -199,33 +215,21 @@ export default function Home() {
     const newDeposit: Deposit = {
       id: `dep_${Date.now()}`,
       depositId,
-      date: new Date().toISOString().split('T')[0],
-      amount: totalAmount,
+      depositDate,
+      batch: 'N/A',
+      reference,
       paymentIds,
+      adjustmentIds,
+      returnCheckIds: [],
+      paymentTotal,
+      adjustmentTotal,
+      returnCheckTotal: 0,
+      amount: totalAmount,
       status: 'PENDING',
       createdDate: new Date().toISOString().split('T')[0],
     };
 
-    // Mark payments as deposited across all customers
-    setGlobalDeposits([...globalDeposits, newDeposit]);
-
-    // Update current customer data if applicable
-    setCustomerData((prev) => {
-      if (!prev) return prev;
-
-      const updatedPayments = prev.payments.map((p) =>
-        paymentIds.includes(p.id)
-          ? { ...p, isDeposited: true, depositId: newDeposit.id }
-          : p
-      );
-
-      return {
-        ...prev,
-        payments: updatedPayments,
-      };
-    });
-
-    // Update all customer data in DB
+    // Mark items as deposited
     Object.entries(DB).forEach(([_customerId, customer]) => {
       customer.payments.forEach((p) => {
         if (paymentIds.includes(p.id)) {
@@ -233,48 +237,86 @@ export default function Home() {
           p.depositId = newDeposit.id;
         }
       });
+
+      customer.creditEntries.forEach((c) => {
+        if (adjustmentIds.includes(c.id)) {
+          c.isDeposited = true;
+          c.depositId = newDeposit.id;
+        }
+      });
     });
+
+    setGlobalDeposits([...globalDeposits, newDeposit]);
   }, [globalDeposits]);
 
   const handleFinalizeDeposit = useCallback((depositId: string) => {
     setGlobalDeposits((prev) =>
       prev.map((d) =>
-        d.id === depositId ? { ...d, status: 'FINALIZED' } : d
+        d.id === depositId ? { ...d, status: 'POSTED' } : d
       )
     );
   }, []);
 
-  const handleRemoveFromDeposit = useCallback((depositId: string, paymentId: string) => {
+  const handleRemoveFromDeposit = useCallback((depositId: string, itemId: string, itemType: 'PAYMENT' | 'ADJUSTMENT' | 'RETURNED_CHECK') => {
     const deposit = globalDeposits.find((d) => d.id === depositId);
-    if (!deposit || deposit.status === 'FINALIZED') return;
+    if (!deposit || deposit.status === 'POSTED') return;
 
-    const updatedPaymentIds = deposit.paymentIds.filter((id) => id !== paymentId);
-    const newAmount = (() => {
-      let total = 0;
-      Object.values(DB).forEach((customer) => {
-        customer.payments.forEach((p) => {
-          if (updatedPaymentIds.includes(p.id)) {
-            total += p.amount;
-          }
-        });
+    let updatedPaymentIds = deposit.paymentIds;
+    let updatedAdjustmentIds = deposit.adjustmentIds;
+
+    if (itemType === 'PAYMENT' || itemType === 'RETURNED_CHECK') {
+      updatedPaymentIds = deposit.paymentIds.filter((id) => id !== itemId);
+    } else if (itemType === 'ADJUSTMENT') {
+      updatedAdjustmentIds = deposit.adjustmentIds.filter((id) => id !== itemId);
+    }
+
+    // Recalculate totals
+    let newPaymentTotal = 0;
+    let newAdjustmentTotal = 0;
+
+    Object.values(DB).forEach((customer) => {
+      customer.payments.forEach((p) => {
+        if (updatedPaymentIds.includes(p.id)) {
+          newPaymentTotal += p.amount;
+        }
       });
-      return total;
-    })();
+
+      customer.creditEntries.forEach((c) => {
+        if (updatedAdjustmentIds.includes(c.id)) {
+          newAdjustmentTotal += c.amount;
+        }
+      });
+    });
+
+    const newAmount = newPaymentTotal + newAdjustmentTotal;
 
     setGlobalDeposits((prev) =>
       prev.map((d) =>
         d.id === depositId
-          ? { ...d, paymentIds: updatedPaymentIds, amount: newAmount }
+          ? {
+              ...d,
+              paymentIds: updatedPaymentIds,
+              adjustmentIds: updatedAdjustmentIds,
+              paymentTotal: newPaymentTotal,
+              adjustmentTotal: newAdjustmentTotal,
+              amount: newAmount,
+            }
           : d
       )
     );
 
-    // Update payment deposit status
+    // Update item deposit status
     Object.entries(DB).forEach(([_customerId, customer]) => {
-      const payment = customer.payments.find((p) => p.id === paymentId);
+      const payment = customer.payments.find((p) => p.id === itemId);
       if (payment) {
         payment.isDeposited = false;
         payment.depositId = undefined;
+      }
+
+      const entry = customer.creditEntries.find((c) => c.id === itemId);
+      if (entry) {
+        entry.isDeposited = false;
+        entry.depositId = undefined;
       }
     });
 

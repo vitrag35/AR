@@ -14,6 +14,7 @@ export interface Charge {
 
 export interface Payment {
   id: string;
+  customerId: string;
   date: string;
   type: PaymentType;
   ref: string;
@@ -23,6 +24,8 @@ export interface Payment {
   notes?: string;
   depositId?: string;
   isDeposited?: boolean;
+  user?: string;
+  transactionType: 'PAYMENT' | 'RETURNED_CHECK';
 }
 
 export interface Application {
@@ -36,14 +39,21 @@ export interface Application {
 
 export type PaymentApplication = Application;
 
-export type DepositStatus = 'PENDING' | 'FINALIZED';
+export type DepositStatus = 'PENDING' | 'POSTED';
 
 export interface Deposit {
   id: string;
   depositId: string;
-  date: string;
-  amount: number;
+  depositDate: string;
+  batch: string;
+  reference: string;
   paymentIds: string[];
+  adjustmentIds: string[];
+  returnCheckIds: string[];
+  paymentTotal: number;
+  adjustmentTotal: number;
+  returnCheckTotal: number;
+  amount: number;
   status: DepositStatus;
   createdDate: string;
 }
@@ -52,6 +62,7 @@ export type CreditType = 'PAYMENT' | 'ADJUSTMENT' | 'REFUND';
 
 export interface CreditEntry {
   id: string;
+  customerId: string;
   type: CreditType;
   date: string;
   reason?: string;
@@ -61,6 +72,9 @@ export interface CreditEntry {
   isDeleted?: boolean;
   deletedDate?: string;
   notes?: string;
+  user?: string;
+  depositId?: string;
+  isDeposited?: boolean;
 }
 
 export interface DeletedEntry {
@@ -77,6 +91,7 @@ export interface Customer {
   id: string;
   name: string;
   code: string;
+  user?: string;
   charges: Charge[];
   payments: Payment[];
   creditEntries: CreditEntry[];
@@ -84,6 +99,8 @@ export interface Customer {
   deletedEntries: DeletedEntry[];
   deposits: Deposit[];
 }
+
+export const USERS = ['John Smith', 'Sarah Johnson', 'Mike Davis', 'Lisa Anderson'];
 
 export const PAYMENT_TYPE_LABELS: Record<PaymentType, string> = {
   CHECK: 'Check (C)',
@@ -107,10 +124,12 @@ export const DB: Record<string, Customer> = {
       { id: 'i3', num: 'INV-2024-003', ref: 'PO-4455', date: '2024-03-05', due: '2024-04-05', amount: 3100, paid: 1500 },
     ],
     payments: [
-      { id: 'p1', date: '2024-03-08', type: 'CHECK', ref: 'CHK-1024', amount: 1500, applied: 1500, notes: '' },
-      { id: 'p2', date: '2024-03-20', type: 'ACH', ref: 'ACH-5544', amount: 2500, applied: 0, notes: 'Customer deposit' },
+      { id: 'p1', customerId: 'c1', date: '2024-03-08', type: 'CHECK', ref: 'CHK-1024', amount: 1500, applied: 1500, notes: '', user: 'John Smith', transactionType: 'PAYMENT' },
+      { id: 'p2', customerId: 'c1', date: '2024-03-20', type: 'ACH', ref: 'ACH-5544', amount: 2500, applied: 0, notes: 'Customer deposit', user: 'Sarah Johnson', transactionType: 'PAYMENT' },
     ],
-    creditEntries: [],
+    creditEntries: [
+      { id: 'ce1', customerId: 'c1', type: 'ADJUSTMENT', date: '2024-03-22', reason: 'Volume discount', amount: 250, applied: 0, ref: 'ADJ-001', user: 'John Smith' },
+    ],
     applications: [
       { id: 'a1', paymentId: 'p1', chargeId: 'i3', amount: 1500, appliedDate: '2024-03-08' },
     ],
@@ -126,9 +145,11 @@ export const DB: Record<string, Customer> = {
       { id: 'i5', num: 'INV-2024-011', ref: 'PO-5501', date: '2024-02-15', due: '2024-03-15', amount: 3800, paid: 3800 },
     ],
     payments: [
-      { id: 'p3', date: '2024-03-10', type: 'WIRE', ref: 'WIRE-789', amount: 3800, applied: 3800, notes: '' },
+      { id: 'p3', customerId: 'c2', date: '2024-03-10', type: 'WIRE', ref: 'WIRE-789', amount: 3800, applied: 3800, notes: '', user: 'Mike Davis', transactionType: 'PAYMENT' },
     ],
-    creditEntries: [],
+    creditEntries: [
+      { id: 'ce2', customerId: 'c2', type: 'ADJUSTMENT', date: '2024-03-15', reason: 'Late fee waived', amount: 100, applied: 0, ref: 'ADJ-002', user: 'Sarah Johnson' },
+    ],
     applications: [
       { id: 'a2', paymentId: 'p3', chargeId: 'i5', amount: 3800, appliedDate: '2024-03-10' },
     ],
@@ -144,10 +165,13 @@ export const DB: Record<string, Customer> = {
       { id: 'i7', num: 'INV-2024-021', ref: 'PO-6601', date: '2024-02-20', due: '2024-03-20', amount: 3200, paid: 0 },
     ],
     payments: [
-      { id: 'p4', date: '2024-02-25', type: 'CASH', ref: 'CASH-001', amount: 2000, applied: 2000, notes: 'In person' },
-      { id: 'p5', date: '2024-03-15', type: 'CREDIT_CARD', ref: 'CC-1234-5678', amount: 4500, applied: 0, notes: 'Via Stripe' },
+      { id: 'p4', customerId: 'c3', date: '2024-02-25', type: 'CASH', ref: 'CASH-001', amount: 2000, applied: 2000, notes: 'In person', user: 'Lisa Anderson', transactionType: 'PAYMENT' },
+      { id: 'p5', customerId: 'c3', date: '2024-03-15', type: 'CREDIT_CARD', ref: 'CC-1234-5678', amount: 4500, applied: 0, notes: 'Via Stripe', user: 'John Smith', transactionType: 'PAYMENT' },
+      { id: 'p6', customerId: 'c3', date: '2024-03-18', type: 'CHECK', ref: 'CHK-5555', checkDate: '2024-03-18', amount: 1200, applied: 0, notes: 'Returned check', user: 'Mike Davis', transactionType: 'RETURNED_CHECK' },
     ],
-    creditEntries: [],
+    creditEntries: [
+      { id: 'ce3', customerId: 'c3', type: 'ADJUSTMENT', date: '2024-03-20', reason: 'Discount', amount: 500, applied: 0, ref: 'ADJ-003', user: 'Lisa Anderson' },
+    ],
     applications: [
       { id: 'a3', paymentId: 'p4', chargeId: 'i6', amount: 2000, appliedDate: '2024-02-25' },
     ],
