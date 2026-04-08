@@ -210,8 +210,8 @@ export default function FinanceChargesView({ isOpen, onClose }: FinanceChargesVi
                             <td className="px-4 py-3 text-right text-gray-600">${(originalCharge?.amount || 0).toFixed(2)}</td>
                             <td className="px-4 py-3 text-right text-gray-900 font-medium">${fc.interestAmount.toFixed(2)}</td>
                             <td className="px-4 py-3 text-right text-gray-600">{Math.max(0, daysOverdue)}</td>
-                            <td className="px-4 py-3 text-center text-gray-600">True</td>
-                            <td className="px-4 py-3 text-right text-gray-600">${(fc.paid).toFixed(2)}</td>
+                            <td className="px-4 py-3 text-center text-gray-600">{fc.isOverride ? 'Yes' : 'No'}</td>
+                            <td className="px-4 py-3 text-right text-gray-600">${(fc.overrideBefore || 0).toFixed(2)}</td>
                           </tr>
                         );
                       })

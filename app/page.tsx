@@ -452,6 +452,7 @@ export default function Home() {
                 status: 'UNPAID',
                 paid: 0,
                 createdDate: today,
+                isOverride: false,
               };
               newCharges.push(newFinanceCharge);
             }
@@ -471,6 +472,14 @@ export default function Home() {
       if (!prev || !selectedCustomer) return prev;
 
       const today = new Date().toISOString().split('T')[0];
+      
+      // Find the last finance charge for this customer to use as overrideBefore
+      const lastChargeForCustomer = prev.financeCharges.length > 0 
+        ? prev.financeCharges[prev.financeCharges.length - 1]
+        : null;
+      
+      const overrideBefore = lastChargeForCustomer?.interestAmount || 0;
+
       const newFinanceCharge: FinanceCharge = {
         id: `fc-override-${Date.now()}-${Math.random()}`,
         customerId: selectedCustomer.id,
@@ -484,6 +493,8 @@ export default function Home() {
         status: 'UNPAID',
         paid: 0,
         createdDate: today,
+        isOverride: true,
+        overrideBefore,
       };
 
       return {

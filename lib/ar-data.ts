@@ -38,6 +38,8 @@ export interface FinanceCharge {
   paid: number; // amount of finance charge paid so far
   notes?: string;
   createdDate: string;
+  isOverride?: boolean; // true if manually entered override, false if auto-calculated
+  overrideBefore?: number; // previous charge amount before this override
 }
 
 export interface FinanceChargeLogEntry {
