@@ -407,6 +407,16 @@ export default function Home() {
     });
   }, []);
 
+  const selectedCustomer = baseCustomer && customerData ? {
+    ...baseCustomer,
+    charges: customerData.charges,
+    payments: customerData.payments,
+    creditEntries: customerData.creditEntries,
+    applications: customerData.applications,
+    deletedEntries: customerData.deletedEntries,
+    financeCharges: customerData.financeCharges,
+  } : null;
+
   const handleProcessFinanceCharges = useCallback(() => {
     setCustomerData((prev) => {
       if (!prev || !selectedCustomer) return prev;
@@ -482,16 +492,6 @@ export default function Home() {
       };
     });
   }, [selectedCustomer]);
-
-  const selectedCustomer = baseCustomer && customerData ? {
-    ...baseCustomer,
-    charges: customerData.charges,
-    payments: customerData.payments,
-    creditEntries: customerData.creditEntries,
-    applications: customerData.applications,
-    deletedEntries: customerData.deletedEntries,
-    financeCharges: customerData.financeCharges,
-  } : null;
 
   return (
     <main className="min-h-screen bg-gray-100">
