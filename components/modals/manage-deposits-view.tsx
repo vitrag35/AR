@@ -9,14 +9,14 @@ interface ManageDepositsViewProps {
 }
 
 export default function ManageDepositsView({
-  deposits,
+  deposits = [],
   onDeleteDeposit,
 }: ManageDepositsViewProps) {
   const [viewMode, setViewMode] = useState<'active' | 'deleted'>('active');
 
   // Filter active and deleted deposits
-  const activeDeposits = deposits.filter((d) => !d.isDeleted);
-  const deletedDeposits = deposits.filter((d) => d.isDeleted);
+  const activeDeposits = (deposits || []).filter((d) => !d.isDeleted);
+  const deletedDeposits = (deposits || []).filter((d) => d.isDeleted);
 
   const handleDeleteDeposit = (depositId: string) => {
     if (window.confirm('Are you sure you want to delete this deposit?')) {
@@ -52,26 +52,26 @@ export default function ManageDepositsView({
     <div className="p-6 space-y-6">
       {/* View Mode Tabs */}
       <div className="flex gap-4 border-b border-gray-200 pb-4">
-        <button
-          onClick={() => setViewMode('active')}
-          className={`px-4 py-2 font-semibold transition ${
-            viewMode === 'active'
-              ? 'text-teal-700 border-b-2 border-teal-700'
-              : 'text-gray-600 hover:text-gray-800'
-          }`}
-        >
-          Active Deposits ({activeDeposits.length})
-        </button>
-        <button
-          onClick={() => setViewMode('deleted')}
-          className={`px-4 py-2 font-semibold transition ${
-            viewMode === 'deleted'
-              ? 'text-teal-700 border-b-2 border-teal-700'
-              : 'text-gray-600 hover:text-gray-800'
-          }`}
-        >
-          View Deleted Deposits ({deletedDeposits.length})
-        </button>
+          <button
+            onClick={() => setViewMode('active')}
+            className={`px-4 py-2 font-semibold transition ${
+              viewMode === 'active'
+                ? 'text-teal-700 border-b-2 border-teal-700'
+                : 'text-gray-600 hover:text-gray-800'
+            }`}
+          >
+            Active Deposits ({activeDeposits.length})
+          </button>
+          <button
+            onClick={() => setViewMode('deleted')}
+            className={`px-4 py-2 font-semibold transition ${
+              viewMode === 'deleted'
+                ? 'text-teal-700 border-b-2 border-teal-700'
+                : 'text-gray-600 hover:text-gray-800'
+            }`}
+          >
+            View Deleted Deposits ({deletedDeposits.length})
+          </button>
       </div>
 
       {/* Active Deposits */}
@@ -93,6 +93,7 @@ export default function ManageDepositsView({
                     <th className="px-4 py-3 text-right font-semibold text-xs uppercase">Payment Total</th>
                     <th className="px-4 py-3 text-right font-semibold text-xs uppercase">Adjustment Total</th>
                     <th className="px-4 py-3 text-right font-semibold text-xs uppercase">Return Check Total</th>
+                    <th className="px-4 py-3 text-center font-semibold text-xs uppercase">Transaction Source</th>
                     <th className="px-4 py-3 text-left font-semibold text-xs uppercase">Status</th>
                     <th className="px-4 py-3 text-center font-semibold text-xs uppercase">Actions</th>
                   </tr>
@@ -107,6 +108,17 @@ export default function ManageDepositsView({
                       <td className="px-4 py-3 text-right text-gray-800 font-semibold">${deposit.paymentTotal.toFixed(2)}</td>
                       <td className="px-4 py-3 text-right text-gray-800 font-semibold">${deposit.adjustmentTotal.toFixed(2)}</td>
                       <td className="px-4 py-3 text-right text-gray-800 font-semibold">${deposit.returnCheckTotal.toFixed(2)}</td>
+                      <td className="px-4 py-3 text-center">
+                        <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold ${
+                          deposit.transactionSource === 'AR' 
+                            ? 'bg-purple-100 text-purple-700' 
+                            : deposit.transactionSource === 'POS'
+                            ? 'bg-blue-100 text-blue-700'
+                            : 'bg-gray-100 text-gray-700'
+                        }`}>
+                          {deposit.transactionSource === 'AR' ? 'Posted A/R' : deposit.transactionSource === 'POS' ? 'Posted POS' : 'N/A'}
+                        </span>
+                      </td>
                       <td className="px-4 py-3">
                         <span className="inline-block px-3 py-1 rounded-full text-xs font-bold bg-green-100 text-green-700 border border-green-300">
                           POSTED
@@ -155,6 +167,7 @@ export default function ManageDepositsView({
                     <th className="px-4 py-3 text-right font-semibold text-xs uppercase">Payment Total</th>
                     <th className="px-4 py-3 text-right font-semibold text-xs uppercase">Adjustment Total</th>
                     <th className="px-4 py-3 text-right font-semibold text-xs uppercase">Return Check Total</th>
+                    <th className="px-4 py-3 text-center font-semibold text-xs uppercase">Transaction Source</th>
                     <th className="px-4 py-3 text-left font-semibold text-xs uppercase">Deleted Date</th>
                     <th className="px-4 py-3 text-center font-semibold text-xs uppercase">Actions</th>
                   </tr>
@@ -168,6 +181,17 @@ export default function ManageDepositsView({
                       <td className="px-4 py-3 text-right text-gray-600 font-semibold">${deposit.paymentTotal.toFixed(2)}</td>
                       <td className="px-4 py-3 text-right text-gray-600 font-semibold">${deposit.adjustmentTotal.toFixed(2)}</td>
                       <td className="px-4 py-3 text-right text-gray-600 font-semibold">${deposit.returnCheckTotal.toFixed(2)}</td>
+                      <td className="px-4 py-3 text-center">
+                        <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold ${
+                          deposit.transactionSource === 'AR' 
+                            ? 'bg-purple-100 text-purple-700' 
+                            : deposit.transactionSource === 'POS'
+                            ? 'bg-blue-100 text-blue-700'
+                            : 'bg-gray-100 text-gray-700'
+                        }`}>
+                          {deposit.transactionSource === 'AR' ? 'Posted A/R' : deposit.transactionSource === 'POS' ? 'Posted POS' : 'N/A'}
+                        </span>
+                      </td>
                       <td className="px-4 py-3 text-gray-500">{deposit.deletedDate || 'N/A'}</td>
                       <td className="px-4 py-3 text-center">
                         <button

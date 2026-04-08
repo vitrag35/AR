@@ -14,6 +14,7 @@ interface Transaction {
   reference: string;
   user: string;
   raw: any;
+  isPOS?: boolean;
 }
 
 interface CreateNewDepositViewProps {
@@ -35,6 +36,7 @@ export default function CreateNewDepositView({
   const [filterAllDates, setFilterAllDates] = useState(true);
   const [filterCustomer, setFilterCustomer] = useState<string>('ALL');
   const [filterUser, setFilterUser] = useState<string>('ALL');
+  const [filterTransactionSource, setFilterTransactionSource] = useState<'ALL' | 'AR' | 'POS'>('ALL');
   const [depositDate, setDepositDate] = useState(new Date().toISOString().split('T')[0]);
   const [reference, setReference] = useState('');
   const [customerSearchQuery, setCustomerSearchQuery] = useState('');
@@ -102,9 +104,13 @@ export default function CreateNewDepositView({
       }
       if (filterCustomer !== 'ALL' && t.customerName !== filterCustomer) return false;
       if (filterUser !== 'ALL' && t.user !== filterUser) return false;
+      if (filterTransactionSource !== 'ALL') {
+        const isPOS = t.isPOS ? 'POS' : 'AR';
+        if (isPOS !== filterTransactionSource) return false;
+      }
       return true;
     });
-  }, [allTransactions, filterType, filterSubType, filterStartDate, filterEndDate, filterAllDates, filterCustomer, filterUser]);
+  }, [allTransactions, filterType, filterSubType, filterStartDate, filterEndDate, filterAllDates, filterCustomer, filterUser, filterTransactionSource]);
 
   // Calculate totals
   const paymentTotal = useMemo(() => {
@@ -278,6 +284,21 @@ export default function CreateNewDepositView({
             </select>
           </div>
 
+          <div>
+            <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">
+              Transaction Source
+            </label>
+            <select
+              value={filterTransactionSource}
+              onChange={(e) => setFilterTransactionSource(e.target.value as 'ALL' | 'AR' | 'POS')}
+              className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-teal-700"
+            >
+              <option value="ALL">All Sources</option>
+              <option value="AR">Posted A/R</option>
+              <option value="POS">Posted POS</option>
+            </select>
+          </div>
+
           <div className="flex items-end">
             <label className="flex items-center gap-2 cursor-pointer">
               <input
@@ -343,14 +364,15 @@ export default function CreateNewDepositView({
                 <th className="px-4 py-3 text-left font-semibold text-xs uppercase">Date</th>
                 <th className="px-4 py-3 text-left font-semibold text-xs uppercase">Reference</th>
                 <th className="px-4 py-3 text-left font-semibold text-xs uppercase">Customer</th>
-                <th className="px-4 py-3 text-left font-semibold text-xs uppercase">User</th>
-                <th className="px-4 py-3 text-right font-semibold text-xs uppercase">Amount</th>
-              </tr>
-            </thead>
+              <th className="px-4 py-3 text-left font-semibold text-xs uppercase">User</th>
+              <th className="px-4 py-3 text-center font-semibold text-xs uppercase">POS</th>
+              <th className="px-4 py-3 text-right font-semibold text-xs uppercase">Amount</th>
+            </tr>
+          </thead>
             <tbody>
               {filteredTransactions.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-8 text-center text-gray-500">
+                  <td colSpan={9} className="px-4 py-8 text-center text-gray-500">
                     No transactions match the selected filters
                   </td>
                 </tr>
@@ -373,6 +395,13 @@ export default function CreateNewDepositView({
                     <td className="px-4 py-3 text-gray-600">{transaction.reference}</td>
                     <td className="px-4 py-3 text-gray-800 font-medium">{transaction.customerName}</td>
                     <td className="px-4 py-3 text-gray-600">{transaction.user}</td>
+                    <td className="px-4 py-3 text-center">
+                      {transaction.isPOS ? (
+                        <span className="inline-block px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs font-bold">Yes</span>
+                      ) : (
+                        <span className="inline-block px-2 py-1 bg-gray-100 text-gray-500 rounded text-xs font-bold">No</span>
+                      )}
+                    </td>
                     <td className="px-4 py-3 text-right font-bold text-gray-800">
                       ${transaction.amount.toFixed(2)}
                     </td>

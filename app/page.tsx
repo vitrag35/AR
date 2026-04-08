@@ -1,12 +1,14 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { DB, Payment, PaymentApplication, CreditEntry, DeletedEntry, Charge, Deposit } from '@/lib/ar-data';
+import { DB, Payment, PaymentApplication, CreditEntry, DeletedEntry, Charge, Deposit, FinanceCharge, DEFAULT_FINANCE_CHARGE_CONFIG } from '@/lib/ar-data';
 import Header from '@/components/ar/header';
 import CustomerBar from '@/components/ar/customer-bar';
 import ArPanel from '@/components/ar/ar-panel';
 import UniversalDepositsModal from '@/components/modals/universal-deposits-modal';
 import UniversalSearchModal from '@/components/modals/universal-search-modal';
+import FinanceChargesView from '@/components/finance-charges-view';
+import CustomerFinanceChargesModal from '@/components/ar/modals/customer-finance-charges-modal';
 
 interface CustomerData {
   charges: typeof DB.acme_corp.charges;
@@ -14,10 +16,13 @@ interface CustomerData {
   creditEntries: CreditEntry[];
   applications: PaymentApplication[];
   deletedEntries: DeletedEntry[];
+  financeCharges: FinanceCharge[];
 }
 
 export default function Home() {
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>('');
+  const [isFinanceChargesModalOpen, setIsFinanceChargesModalOpen] = useState(false);
+  const [isCustomerFinanceChargesModalOpen, setIsCustomerFinanceChargesModalOpen] = useState(false);
   
   // Initialize customer data from DB
   const baseCustomer = selectedCustomerId ? DB[selectedCustomerId as keyof typeof DB] : null;
@@ -28,6 +33,7 @@ export default function Home() {
       creditEntries: [...baseCustomer.creditEntries],
       applications: [...baseCustomer.applications],
       deletedEntries: [...baseCustomer.deletedEntries],
+      financeCharges: [...(baseCustomer.financeCharges || [])],
     } : null
   );
 
@@ -40,6 +46,7 @@ export default function Home() {
       creditEntries: [...customer.creditEntries],
       applications: [...customer.applications],
       deletedEntries: [...customer.deletedEntries],
+      financeCharges: [...(customer.financeCharges || [])],
     });
   }, []);
 
@@ -377,6 +384,29 @@ export default function Home() {
     });
   }, []);
 
+  const handleApplyPaymentToFinanceCharge = useCallback((financeChargeId: string, amount: number) => {
+    setCustomerData((prev) => {
+      if (!prev) return prev;
+
+      const newFinanceCharges = prev.financeCharges.map((fc) => {
+        if (fc.id === financeChargeId) {
+          const newPaid = Math.min(fc.paid + amount, fc.interestAmount);
+          return {
+            ...fc,
+            paid: newPaid,
+            status: newPaid === 0 ? 'UNPAID' : newPaid < fc.interestAmount ? 'PARTIAL' : 'PAID',
+          };
+        }
+        return fc;
+      });
+
+      return {
+        ...prev,
+        financeCharges: newFinanceCharges,
+      };
+    });
+  }, []);
+
   const selectedCustomer = baseCustomer && customerData ? {
     ...baseCustomer,
     charges: customerData.charges,
@@ -384,31 +414,110 @@ export default function Home() {
     creditEntries: customerData.creditEntries,
     applications: customerData.applications,
     deletedEntries: customerData.deletedEntries,
+    financeCharges: customerData.financeCharges,
   } : null;
+
+  const handleProcessFinanceCharges = useCallback(() => {
+    setCustomerData((prev) => {
+      if (!prev || !selectedCustomer) return prev;
+
+      // Calculate finance charges for overdue invoices
+      const config = DEFAULT_FINANCE_CHARGE_CONFIG;
+      const today = new Date().toISOString().split('T')[0];
+      const newCharges: FinanceCharge[] = [];
+
+      prev.charges.forEach((charge) => {
+        // Check if invoice is overdue
+        if (new Date(charge.due) < new Date(today)) {
+          const daysOverdue = Math.floor(
+            (new Date(today).getTime() - new Date(charge.due).getTime()) / (1000 * 60 * 60 * 24)
+          );
+
+          if (daysOverdue >= config.daysUntilInterestApplies) {
+            const principalAmount = charge.amount - charge.paid;
+            const monthsElapsed = daysOverdue / 30;
+            const interestAmount = (principalAmount * config.annualInterestRate / 100 / 12) * monthsElapsed;
+
+            if (interestAmount >= config.minimumChargeAmount) {
+              const newFinanceCharge: FinanceCharge = {
+                id: `fc-${Date.now()}-${Math.random()}`,
+                customerId: selectedCustomer.id,
+                chargeId: charge.id,
+                calculationDate: today,
+                periodStartDate: config.lastRunDate || charge.due,
+                periodEndDate: today,
+                principalAmount,
+                interestRate: config.annualInterestRate,
+                interestAmount: Math.round(interestAmount * 100) / 100,
+                status: 'UNPAID',
+                paid: 0,
+                createdDate: today,
+                isOverride: false,
+              };
+              newCharges.push(newFinanceCharge);
+            }
+          }
+        }
+      });
+
+      return {
+        ...prev,
+        financeCharges: [...prev.financeCharges, ...newCharges],
+      };
+    });
+  }, [selectedCustomer]);
+
+  const handleOverrideFinanceCharges = useCallback((amount: number) => {
+    setCustomerData((prev) => {
+      if (!prev || !selectedCustomer) return prev;
+
+      const today = new Date().toISOString().split('T')[0];
+      
+      // Find the last finance charge for this customer to use as overrideBefore
+      const lastChargeForCustomer = prev.financeCharges.length > 0 
+        ? prev.financeCharges[prev.financeCharges.length - 1]
+        : null;
+      
+      const overrideBefore = lastChargeForCustomer?.interestAmount || 0;
+
+      const newFinanceCharge: FinanceCharge = {
+        id: `fc-override-${Date.now()}-${Math.random()}`,
+        customerId: selectedCustomer.id,
+        chargeId: prev.charges[0]?.id || '',
+        calculationDate: today,
+        periodStartDate: today,
+        periodEndDate: today,
+        principalAmount: 0,
+        interestRate: DEFAULT_FINANCE_CHARGE_CONFIG.annualInterestRate,
+        interestAmount: amount,
+        status: 'UNPAID',
+        paid: 0,
+        createdDate: today,
+        isOverride: true,
+        overrideBefore,
+      };
+
+      return {
+        ...prev,
+        financeCharges: [...prev.financeCharges, newFinanceCharge],
+      };
+    });
+  }, [selectedCustomer]);
 
   return (
     <main className="min-h-screen bg-gray-100">
       <Header 
         onOpenDeposits={() => setIsDepositsModalOpen(true)} 
         onOpenSearch={() => setIsSearchModalOpen(true)}
+        onOpenFinanceCharges={() => setIsFinanceChargesModalOpen(true)}
       />
-      <UniversalSearchModal
-        isOpen={isSearchModalOpen}
-        onClose={() => setIsSearchModalOpen(false)}
-        onSelectCustomer={handleSelectCustomer}
-      />
-      <UniversalDepositsModal
-        isOpen={isDepositsModalOpen}
-        onClose={() => setIsDepositsModalOpen(false)}
-        deposits={globalDeposits}
-        onCreateDeposit={handleCreateDeposit}
-        onDeleteDeposit={handleDeleteDeposit}
-      />
-      <CustomerBar 
+      <CustomerBar
         selectedCustomerId={selectedCustomerId}
         selectedCustomer={selectedCustomer}
         onSelectCustomer={handleSelectCustomer}
+        onOpenFinanceCharges={() => setIsCustomerFinanceChargesModalOpen(true)}
       />
+
       {selectedCustomer && customerData ? (
         <ArPanel 
           customer={selectedCustomer}
@@ -422,12 +531,34 @@ export default function Home() {
           onUnapplyPayment={handleUnapplyPayment}
         />
       ) : (
-        <div className="max-w-4xl mx-auto mt-24 px-6">
-          <div className="flex flex-col items-center justify-center py-20 text-gray-300 gap-4">
-            <div className="text-5xl">👤</div>
-            <p className="text-lg">Select a customer above to view their Account Receivable</p>
-          </div>
+        <div className="p-6 text-center text-gray-500">
+          <p>Select a customer to view AR details</p>
         </div>
+      )}
+
+      <UniversalSearchModal
+        isOpen={isSearchModalOpen}
+        onClose={() => setIsSearchModalOpen(false)}
+        onSelectCustomer={handleSelectCustomer}
+      />
+      <UniversalDepositsModal
+        isOpen={isDepositsModalOpen}
+        onClose={() => setIsDepositsModalOpen(false)}
+      />
+
+      <FinanceChargesView
+        isOpen={isFinanceChargesModalOpen}
+        onClose={() => setIsFinanceChargesModalOpen(false)}
+      />
+
+      {selectedCustomer && (
+        <CustomerFinanceChargesModal
+          isOpen={isCustomerFinanceChargesModalOpen}
+          onClose={() => setIsCustomerFinanceChargesModalOpen(false)}
+          customer={selectedCustomer}
+          onProcessFinanceCharges={handleProcessFinanceCharges}
+          onOverrideFinanceCharges={handleOverrideFinanceCharges}
+        />
       )}
     </main>
   );
