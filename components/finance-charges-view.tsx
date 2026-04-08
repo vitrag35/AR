@@ -160,79 +160,66 @@ export default function FinanceChargesView({ isOpen, onClose }: FinanceChargesVi
               </div>
             </div>
 
-        {/* Main Table */}
-        <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="bg-teal-700 text-white">
-                  <th className="px-4 py-3 text-left font-semibold text-xs uppercase">Customer</th>
-                  <th className="px-4 py-3 text-left font-semibold text-xs uppercase">Invoice</th>
-                  <th className="px-4 py-3 text-left font-semibold text-xs uppercase">Calc Date</th>
-                  <th className="px-4 py-3 text-right font-semibold text-xs uppercase">Principal</th>
-                  <th className="px-4 py-3 text-right font-semibold text-xs uppercase">Interest Rate</th>
-                  <th className="px-4 py-3 text-right font-semibold text-xs uppercase">Interest Charged</th>
-                  <th className="px-4 py-3 text-right font-semibold text-xs uppercase">Paid</th>
-                  <th className="px-4 py-3 text-right font-semibold text-xs uppercase">Balance</th>
-                  <th className="px-4 py-3 text-left font-semibold text-xs uppercase">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredCharges.length === 0 ? (
-                  <tr>
-                    <td colSpan={9} className="px-4 py-8 text-center text-gray-500">
-                      No finance charges recorded.
-                    </td>
-                  </tr>
-                ) : (
-                  filteredCharges.map((fc) => {
-                    const balanceDue = fc.interestAmount - fc.paid;
-                    return (
-                      <tr
-                        key={fc.id}
-                        onClick={() => {
-                          setSelectedFinanceChargeId(fc.id);
-                          setSelectedCustomerId(fc.customerId);
-                        }}
-                        className={`border-b border-gray-100 cursor-pointer hover:bg-blue-50 transition-colors ${
-                          selectedFinanceChargeId === fc.id ? 'bg-blue-100' : ''
-                        }`}
-                      >
-                        <td className="px-4 py-3 font-medium text-gray-900">{fc.customerName}</td>
-                        <td className="px-4 py-3 text-gray-600">
-                          {Object.values(DB)
-                            .flatMap((c) => c.charges)
-                            .find((ch) => ch.id === fc.chargeId)?.num}
-                        </td>
-                        <td className="px-4 py-3 text-gray-600">{fc.calculationDate}</td>
-                        <td className="px-4 py-3 text-right font-medium text-gray-900">
-                          ${fc.principalAmount.toFixed(2)}
-                        </td>
-                        <td className="px-4 py-3 text-right text-gray-600">{fc.interestRate}%</td>
-                        <td className="px-4 py-3 text-right font-medium text-gray-900">
-                          ${fc.interestAmount.toFixed(2)}
-                        </td>
-                        <td className="px-4 py-3 text-right text-gray-600">${fc.paid.toFixed(2)}</td>
-                        <td className="px-4 py-3 text-right font-bold text-gray-900">
-                          ${balanceDue.toFixed(2)}
-                        </td>
-                        <td className="px-4 py-3">
-                          <span
-                            className={`inline-block px-3 py-1 rounded-full text-xs font-bold border ${getStatusBadgeColor(
-                              fc.status
-                            )}`}
-                          >
-                            {fc.status}
-                          </span>
+            {/* Main Table */}
+            <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm border-collapse">
+                  <thead>
+                    <tr className="bg-gray-100 border-b border-gray-300">
+                      <th className="px-4 py-3 text-center font-semibold text-xs text-gray-700 w-8"></th>
+                      <th className="px-4 py-3 text-left font-semibold text-xs text-gray-700">Date Charged</th>
+                      <th className="px-4 py-3 text-left font-semibold text-xs text-gray-700">Customer Number</th>
+                      <th className="px-4 py-3 text-center font-semibold text-xs text-gray-700">Invoice</th>
+                      <th className="px-4 py-3 text-center font-semibold text-xs text-gray-700">Type</th>
+                      <th className="px-4 py-3 text-right font-semibold text-xs text-gray-700">Balance</th>
+                      <th className="px-4 py-3 text-right font-semibold text-xs text-gray-700">Finance Charge</th>
+                      <th className="px-4 py-3 text-right font-semibold text-xs text-gray-700">Days Overdue</th>
+                      <th className="px-4 py-3 text-center font-semibold text-xs text-gray-700">Override</th>
+                      <th className="px-4 py-3 text-right font-semibold text-xs text-gray-700">Override (Before)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredCharges.length === 0 ? (
+                      <tr>
+                        <td colSpan={10} className="px-4 py-8 text-center text-gray-500">
+                          No finance charges recorded.
                         </td>
                       </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
+                    ) : (
+                      filteredCharges.map((fc) => {
+                        const originalCharge = Object.values(DB)
+                          .flatMap((c) => c.charges)
+                          .find((ch) => ch.id === fc.chargeId);
+                        const daysOverdue = Math.floor(
+                          (new Date(fc.calculationDate).getTime() - new Date(originalCharge?.due || fc.calculationDate).getTime()) / (1000 * 60 * 60 * 24)
+                        );
+                        return (
+                          <tr
+                            key={fc.id}
+                            className="border-b border-gray-200 hover:bg-gray-50 transition-colors"
+                          >
+                            <td className="px-4 py-3 text-center">
+                              <input type="checkbox" className="w-4 h-4 cursor-pointer" />
+                            </td>
+                            <td className="px-4 py-3 text-gray-900 font-medium">{fc.calculationDate}</td>
+                            <td className="px-4 py-3 text-gray-900">{fc.customerCode}</td>
+                            <td className="px-4 py-3 text-center text-gray-600">{originalCharge?.num || '-'}</td>
+                            <td className="px-4 py-3 text-center text-gray-600">
+                              <span className="inline-flex items-center justify-center w-6 h-6 bg-blue-500 text-white text-xs font-bold rounded">X</span>
+                            </td>
+                            <td className="px-4 py-3 text-right text-gray-600">${(originalCharge?.amount || 0).toFixed(2)}</td>
+                            <td className="px-4 py-3 text-right text-gray-900 font-medium">${fc.interestAmount.toFixed(2)}</td>
+                            <td className="px-4 py-3 text-right text-gray-600">{Math.max(0, daysOverdue)}</td>
+                            <td className="px-4 py-3 text-center text-gray-600">True</td>
+                            <td className="px-4 py-3 text-right text-gray-600">${(fc.paid).toFixed(2)}</td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
 
           </div>
         </div>

@@ -1,13 +1,14 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { DB, Payment, PaymentApplication, CreditEntry, DeletedEntry, Charge, Deposit, FinanceCharge } from '@/lib/ar-data';
+import { DB, Payment, PaymentApplication, CreditEntry, DeletedEntry, Charge, Deposit, FinanceCharge, DEFAULT_FINANCE_CHARGE_CONFIG } from '@/lib/ar-data';
 import Header from '@/components/ar/header';
 import CustomerBar from '@/components/ar/customer-bar';
 import ArPanel from '@/components/ar/ar-panel';
 import UniversalDepositsModal from '@/components/modals/universal-deposits-modal';
 import UniversalSearchModal from '@/components/modals/universal-search-modal';
 import FinanceChargesView from '@/components/finance-charges-view';
+import CustomerFinanceChargesModal from '@/components/ar/modals/customer-finance-charges-modal';
 
 interface CustomerData {
   charges: typeof DB.acme_corp.charges;
@@ -21,6 +22,7 @@ interface CustomerData {
 export default function Home() {
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>('');
   const [isFinanceChargesModalOpen, setIsFinanceChargesModalOpen] = useState(false);
+  const [isCustomerFinanceChargesModalOpen, setIsCustomerFinanceChargesModalOpen] = useState(false);
   
   // Initialize customer data from DB
   const baseCustomer = selectedCustomerId ? DB[selectedCustomerId as keyof typeof DB] : null;
@@ -405,6 +407,82 @@ export default function Home() {
     });
   }, []);
 
+  const handleProcessFinanceCharges = useCallback(() => {
+    setCustomerData((prev) => {
+      if (!prev || !selectedCustomer) return prev;
+
+      // Calculate finance charges for overdue invoices
+      const config = DEFAULT_FINANCE_CHARGE_CONFIG;
+      const today = new Date().toISOString().split('T')[0];
+      const newCharges: FinanceCharge[] = [];
+
+      prev.charges.forEach((charge) => {
+        // Check if invoice is overdue
+        if (new Date(charge.due) < new Date(today)) {
+          const daysOverdue = Math.floor(
+            (new Date(today).getTime() - new Date(charge.due).getTime()) / (1000 * 60 * 60 * 24)
+          );
+
+          if (daysOverdue >= config.daysUntilInterestApplies) {
+            const principalAmount = charge.amount - charge.paid;
+            const monthsElapsed = daysOverdue / 30;
+            const interestAmount = (principalAmount * config.annualInterestRate / 100 / 12) * monthsElapsed;
+
+            if (interestAmount >= config.minimumChargeAmount) {
+              const newFinanceCharge: FinanceCharge = {
+                id: `fc-${Date.now()}-${Math.random()}`,
+                customerId: selectedCustomer.id,
+                chargeId: charge.id,
+                calculationDate: today,
+                periodStartDate: config.lastRunDate || charge.due,
+                periodEndDate: today,
+                principalAmount,
+                interestRate: config.annualInterestRate,
+                interestAmount: Math.round(interestAmount * 100) / 100,
+                status: 'UNPAID',
+                paid: 0,
+                createdDate: today,
+              };
+              newCharges.push(newFinanceCharge);
+            }
+          }
+        }
+      });
+
+      return {
+        ...prev,
+        financeCharges: [...prev.financeCharges, ...newCharges],
+      };
+    });
+  }, [selectedCustomer]);
+
+  const handleOverrideFinanceCharges = useCallback((amount: number) => {
+    setCustomerData((prev) => {
+      if (!prev || !selectedCustomer) return prev;
+
+      const today = new Date().toISOString().split('T')[0];
+      const newFinanceCharge: FinanceCharge = {
+        id: `fc-override-${Date.now()}-${Math.random()}`,
+        customerId: selectedCustomer.id,
+        chargeId: prev.charges[0]?.id || '',
+        calculationDate: today,
+        periodStartDate: today,
+        periodEndDate: today,
+        principalAmount: 0,
+        interestRate: DEFAULT_FINANCE_CHARGE_CONFIG.annualInterestRate,
+        interestAmount: amount,
+        status: 'UNPAID',
+        paid: 0,
+        createdDate: today,
+      };
+
+      return {
+        ...prev,
+        financeCharges: [...prev.financeCharges, newFinanceCharge],
+      };
+    });
+  }, [selectedCustomer]);
+
   const selectedCustomer = baseCustomer && customerData ? {
     ...baseCustomer,
     charges: customerData.charges,
@@ -426,6 +504,7 @@ export default function Home() {
         selectedCustomerId={selectedCustomerId}
         selectedCustomer={selectedCustomer}
         onSelectCustomer={handleSelectCustomer}
+        onOpenFinanceCharges={() => setIsCustomerFinanceChargesModalOpen(true)}
       />
 
       {selectedCustomer && customerData ? (
@@ -460,6 +539,16 @@ export default function Home() {
         isOpen={isFinanceChargesModalOpen}
         onClose={() => setIsFinanceChargesModalOpen(false)}
       />
+
+      {selectedCustomer && (
+        <CustomerFinanceChargesModal
+          isOpen={isCustomerFinanceChargesModalOpen}
+          onClose={() => setIsCustomerFinanceChargesModalOpen(false)}
+          customer={selectedCustomer}
+          onProcessFinanceCharges={handleProcessFinanceCharges}
+          onOverrideFinanceCharges={handleOverrideFinanceCharges}
+        />
+      )}
     </main>
   );
 }
