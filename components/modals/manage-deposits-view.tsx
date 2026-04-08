@@ -13,17 +13,10 @@ export default function ManageDepositsView({
   onDeleteDeposit,
 }: ManageDepositsViewProps) {
   const [viewMode, setViewMode] = useState<'active' | 'deleted'>('active');
-  const [transactionSourceFilter, setTransactionSourceFilter] = useState<'ALL' | 'AR' | 'POS'>('ALL');
 
   // Filter active and deleted deposits
-  let activeDeposits = (deposits || []).filter((d) => !d.isDeleted);
-  let deletedDeposits = (deposits || []).filter((d) => d.isDeleted);
-
-  // Apply transaction source filter
-  if (transactionSourceFilter !== 'ALL') {
-    activeDeposits = activeDeposits.filter((d) => d.transactionSource === transactionSourceFilter);
-    deletedDeposits = deletedDeposits.filter((d) => d.transactionSource === transactionSourceFilter);
-  }
+  const activeDeposits = (deposits || []).filter((d) => !d.isDeleted);
+  const deletedDeposits = (deposits || []).filter((d) => d.isDeleted);
 
   const handleDeleteDeposit = (depositId: string) => {
     if (window.confirm('Are you sure you want to delete this deposit?')) {
@@ -58,8 +51,7 @@ export default function ManageDepositsView({
   return (
     <div className="p-6 space-y-6">
       {/* View Mode Tabs */}
-      <div className="space-y-4">
-        <div className="flex gap-4 border-b border-gray-200 pb-4">
+      <div className="flex gap-4 border-b border-gray-200 pb-4">
           <button
             onClick={() => setViewMode('active')}
             className={`px-4 py-2 font-semibold transition ${
@@ -80,21 +72,6 @@ export default function ManageDepositsView({
           >
             View Deleted Deposits ({deletedDeposits.length})
           </button>
-        </div>
-
-        {/* Transaction Source Filter */}
-        <div className="flex items-center gap-4 bg-gray-50 p-4 rounded-lg">
-          <label className="font-semibold text-gray-700 text-sm">Transaction Source:</label>
-          <select
-            value={transactionSourceFilter}
-            onChange={(e) => setTransactionSourceFilter(e.target.value as 'ALL' | 'AR' | 'POS')}
-            className="px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
-          >
-            <option value="ALL">All Transactions</option>
-            <option value="AR">Posted A/R</option>
-            <option value="POS">Posted POS</option>
-          </select>
-        </div>
       </div>
 
       {/* Active Deposits */}
