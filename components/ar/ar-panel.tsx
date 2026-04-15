@@ -38,15 +38,15 @@ export default function ArPanel({ customer, onAddPayment, onDeletePayment, onAdd
         </button>
       </div>
 
-      {/* Three-Column Concurrent Layout */}
-      <div className="grid grid-cols-3 gap-4 auto-rows-max">
-        {/* Charges Column */}
-        <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden flex flex-col">
-          <div className="sticky top-0 bg-gradient-to-r from-blue-50 to-blue-100 px-5 py-3 border-b border-blue-200 z-10">
+      {/* Vertical Stacked Layout */}
+      <div className="space-y-4">
+        {/* Charges Section */}
+        <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
+          <div className="bg-gradient-to-r from-blue-50 to-blue-100 px-5 py-3 border-b border-blue-200">
             <h3 className="text-sm font-bold text-blue-900 uppercase tracking-wide">Charges</h3>
             <p className="text-xs text-blue-700 mt-1">{customer.charges.length} invoices</p>
           </div>
-          <div className="overflow-y-auto flex-1" style={{ maxHeight: 'calc(100vh - 350px)' }}>
+          <div className="overflow-x-auto">
             <ChargesTab 
               customer={customer} 
               onAddCharge={onAddCharge} 
@@ -58,13 +58,13 @@ export default function ArPanel({ customer, onAddPayment, onDeletePayment, onAdd
           </div>
         </div>
 
-        {/* Payments Column */}
-        <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden flex flex-col">
-          <div className="sticky top-0 bg-gradient-to-r from-green-50 to-green-100 px-5 py-3 border-b border-green-200 z-10">
+        {/* Payments Section */}
+        <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
+          <div className="bg-gradient-to-r from-green-50 to-green-100 px-5 py-3 border-b border-green-200">
             <h3 className="text-sm font-bold text-green-900 uppercase tracking-wide">Payments</h3>
             <p className="text-xs text-green-700 mt-1">{customer.payments.length} payments</p>
           </div>
-          <div className="overflow-y-auto flex-1" style={{ maxHeight: 'calc(100vh - 350px)' }}>
+          <div className="overflow-x-auto">
             <PaymentsTab 
               customer={customer} 
               onAddPayment={onAddPayment} 
@@ -75,13 +75,13 @@ export default function ArPanel({ customer, onAddPayment, onDeletePayment, onAdd
           </div>
         </div>
 
-        {/* Credits Column */}
-        <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden flex flex-col">
-          <div className="sticky top-0 bg-gradient-to-r from-purple-50 to-purple-100 px-5 py-3 border-b border-purple-200 z-10">
+        {/* Credits Section */}
+        <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
+          <div className="bg-gradient-to-r from-purple-50 to-purple-100 px-5 py-3 border-b border-purple-200">
             <h3 className="text-sm font-bold text-purple-900 uppercase tracking-wide">Credits</h3>
             <p className="text-xs text-purple-700 mt-1">{customer.creditEntries.length} credits</p>
           </div>
-          <div className="overflow-y-auto flex-1" style={{ maxHeight: 'calc(100vh - 350px)' }}>
+          <div className="overflow-x-auto">
             <RefundsTab 
               customer={customer} 
               onDeleteCreditEntry={onDeleteCreditEntry} 
