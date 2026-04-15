@@ -21,34 +21,13 @@ interface ArPanelProps {
 }
 
 export default function ArPanel({ customer, onAddPayment, onDeletePayment, onAddCharge, onDeleteCharge, onAddCreditEntry, onDeleteCreditEntry, onApplyPayment, onUnapplyPayment }: ArPanelProps) {
-  const [activeTab, setActiveTab] = useState<'charges' | 'payments' | 'refunds'>('charges'); // v2
   const [showDeletedRecordsModal, setShowDeletedRecordsModal] = useState(false);
 
-  const tabs = [
-    { id: 'charges', label: 'Charges' },
-    { id: 'payments', label: 'Payments' },
-    { id: 'refunds', label: 'Credits' },
-  ];
-
   return (
-    <div className="max-w-6xl mx-auto mt-6 px-6">
-      {/* Tabs */}
-      <div className="border-b-2 border-gray-200 flex items-center justify-between">
-        <div className="flex">
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
-              className={`px-6 py-3 text-sm font-medium transition-colors border-b-4 -mb-0.5 ${
-                activeTab === tab.id
-                  ? 'text-teal-700 border-teal-700 font-semibold'
-                  : 'text-gray-600 border-transparent hover:text-teal-700'
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
+    <div className="mt-6 px-6">
+      {/* Header with Deleted Records Button */}
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-lg font-semibold text-gray-900">Customer Transactions</h2>
         <button
           onClick={() => setShowDeletedRecordsModal(true)}
           className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
@@ -59,11 +38,59 @@ export default function ArPanel({ customer, onAddPayment, onDeletePayment, onAdd
         </button>
       </div>
 
-      {/* Tab Content */}
-      <div className="bg-white border border-gray-200 border-t-0 rounded-b-lg p-5 shadow-sm">
-        {activeTab === 'charges' && <ChargesTab customer={customer} onAddCharge={onAddCharge} onDeleteCharge={onDeleteCharge} onAddCreditEntry={onAddCreditEntry} onUnapplyPayment={onUnapplyPayment} onApplyPayment={onApplyPayment} />}
-        {activeTab === 'payments' && <PaymentsTab customer={customer} onAddPayment={onAddPayment} onDeletePayment={onDeletePayment} onApplyPayment={onApplyPayment} onUnapplyPayment={onUnapplyPayment} />}
-        {activeTab === 'refunds' && <RefundsTab customer={customer} onDeleteCreditEntry={onDeleteCreditEntry} onAddCreditEntry={onAddCreditEntry} onApplyPayment={onApplyPayment} onUnapplyPayment={onUnapplyPayment} />}
+      {/* Three-Column Concurrent Layout */}
+      <div className="grid grid-cols-3 gap-4 auto-rows-max">
+        {/* Charges Column */}
+        <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden flex flex-col">
+          <div className="sticky top-0 bg-gradient-to-r from-blue-50 to-blue-100 px-5 py-3 border-b border-blue-200 z-10">
+            <h3 className="text-sm font-bold text-blue-900 uppercase tracking-wide">Charges</h3>
+            <p className="text-xs text-blue-700 mt-1">{customer.charges.length} invoices</p>
+          </div>
+          <div className="overflow-y-auto flex-1" style={{ maxHeight: 'calc(100vh - 350px)' }}>
+            <ChargesTab 
+              customer={customer} 
+              onAddCharge={onAddCharge} 
+              onDeleteCharge={onDeleteCharge} 
+              onAddCreditEntry={onAddCreditEntry} 
+              onUnapplyPayment={onUnapplyPayment} 
+              onApplyPayment={onApplyPayment} 
+            />
+          </div>
+        </div>
+
+        {/* Payments Column */}
+        <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden flex flex-col">
+          <div className="sticky top-0 bg-gradient-to-r from-green-50 to-green-100 px-5 py-3 border-b border-green-200 z-10">
+            <h3 className="text-sm font-bold text-green-900 uppercase tracking-wide">Payments</h3>
+            <p className="text-xs text-green-700 mt-1">{customer.payments.length} payments</p>
+          </div>
+          <div className="overflow-y-auto flex-1" style={{ maxHeight: 'calc(100vh - 350px)' }}>
+            <PaymentsTab 
+              customer={customer} 
+              onAddPayment={onAddPayment} 
+              onDeletePayment={onDeletePayment} 
+              onApplyPayment={onApplyPayment} 
+              onUnapplyPayment={onUnapplyPayment} 
+            />
+          </div>
+        </div>
+
+        {/* Credits Column */}
+        <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden flex flex-col">
+          <div className="sticky top-0 bg-gradient-to-r from-purple-50 to-purple-100 px-5 py-3 border-b border-purple-200 z-10">
+            <h3 className="text-sm font-bold text-purple-900 uppercase tracking-wide">Credits</h3>
+            <p className="text-xs text-purple-700 mt-1">{customer.creditEntries.length} credits</p>
+          </div>
+          <div className="overflow-y-auto flex-1" style={{ maxHeight: 'calc(100vh - 350px)' }}>
+            <RefundsTab 
+              customer={customer} 
+              onDeleteCreditEntry={onDeleteCreditEntry} 
+              onAddCreditEntry={onAddCreditEntry} 
+              onApplyPayment={onApplyPayment} 
+              onUnapplyPayment={onUnapplyPayment} 
+            />
+          </div>
+        </div>
       </div>
 
       {/* Deleted Records Modal */}
