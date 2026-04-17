@@ -56,17 +56,22 @@ export default function ArPanel({ customer, onAddPayment, onDeletePayment, onAdd
               </span>
             </div>
           </div>
-          <div className="overflow-hidden flex-1" style={{ height: '420px' }}>
-            <div className="overflow-y-auto h-full scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
-              <ChargesTab 
-                customer={customer} 
-                onAddCharge={onAddCharge} 
-                onDeleteCharge={onDeleteCharge} 
-                onAddCreditEntry={onAddCreditEntry} 
-                onUnapplyPayment={onUnapplyPayment} 
-                onApplyPayment={onApplyPayment} 
-              />
-            </div>
+          <div 
+            className="overflow-y-auto flex-1" 
+            style={{ 
+              height: '420px',
+              scrollbarWidth: 'thin',
+              scrollbarColor: '#d1d5db #f3f4f6'
+            }}
+          >
+            <ChargesTab 
+              customer={customer} 
+              onAddCharge={onAddCharge} 
+              onDeleteCharge={onDeleteCharge} 
+              onAddCreditEntry={onAddCreditEntry} 
+              onUnapplyPayment={onUnapplyPayment} 
+              onApplyPayment={onApplyPayment} 
+            />
           </div>
         </div>
 
@@ -80,16 +85,21 @@ export default function ArPanel({ customer, onAddPayment, onDeletePayment, onAdd
               </span>
             </div>
           </div>
-          <div className="overflow-hidden flex-1" style={{ height: '420px' }}>
-            <div className="overflow-y-auto h-full scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
-              <PaymentsTab 
-                customer={customer} 
-                onAddPayment={onAddPayment} 
-                onDeletePayment={onDeletePayment} 
-                onApplyPayment={onApplyPayment} 
-                onUnapplyPayment={onUnapplyPayment} 
-              />
-            </div>
+          <div 
+            className="overflow-y-auto flex-1"
+            style={{ 
+              height: '420px',
+              scrollbarWidth: 'thin',
+              scrollbarColor: '#d1d5db #f3f4f6'
+            }}
+          >
+            <PaymentsTab 
+              customer={customer} 
+              onAddPayment={onAddPayment} 
+              onDeletePayment={onDeletePayment} 
+              onApplyPayment={onApplyPayment} 
+              onUnapplyPayment={onUnapplyPayment} 
+            />
           </div>
         </div>
 
@@ -103,16 +113,21 @@ export default function ArPanel({ customer, onAddPayment, onDeletePayment, onAdd
               </span>
             </div>
           </div>
-          <div className="overflow-hidden flex-1" style={{ height: '420px' }}>
-            <div className="overflow-y-auto h-full scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
-              <RefundsTab 
-                customer={customer} 
-                onDeleteCreditEntry={onDeleteCreditEntry} 
-                onAddCreditEntry={onAddCreditEntry} 
-                onApplyPayment={onApplyPayment} 
-                onUnapplyPayment={onUnapplyPayment} 
-              />
-            </div>
+          <div 
+            className="overflow-y-auto flex-1"
+            style={{ 
+              height: '420px',
+              scrollbarWidth: 'thin',
+              scrollbarColor: '#d1d5db #f3f4f6'
+            }}
+          >
+            <RefundsTab 
+              customer={customer} 
+              onDeleteCreditEntry={onDeleteCreditEntry} 
+              onAddCreditEntry={onAddCreditEntry} 
+              onApplyPayment={onApplyPayment} 
+              onUnapplyPayment={onUnapplyPayment} 
+            />
           </div>
         </div>
       </div>
